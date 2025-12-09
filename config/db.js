@@ -20,7 +20,7 @@ const initDatabase = async () => {
     await tempConnection.query(
       `CREATE DATABASE IF NOT EXISTS \`${DB_NAME|| 'clinic_management_system'}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`
     );
-    console.log(`Database '${DB_NAME}' ensured.`);
+    console.log(`Database '${DB_NAME|| 'clinic_management_system'} ensured.`);
 
     // Load schema.sql
     const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
