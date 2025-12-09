@@ -2,35 +2,35 @@ const mysql = require('mysql2/promise');
 const dotenv = require('dotenv');
 const fs = require('fs');
 const path = require('path');
+
 dotenv.config();
 
-const DB_NAME = process.env.DB_NAME;
+const DB_NAME = process.env.DB_NAME || 'clinic_management_system';
 
 const initDatabase = async () => {
   const tempConnection = await mysql.createConnection({
-    host: process.env.DB_HOST|| 'localhost',
-    user: process.env.DB_USER|| 'root',
+    host: process.env.DB_HOST || 'localhost',
+    user: process.env.DB_USER || 'root',
     password: process.env.DB_PASS || '',
     port: process.env.DB_PORT || 3306,
     multipleStatements: true
   });
 
   try {
-    // Create DB if not exists
     await tempConnection.query(
-      `CREATE DATABASE IF NOT EXISTS \`${DB_NAME|| 'clinic_management_system'}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`
+      `CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`
     );
-    console.log(`Database '${DB_NAME|| 'clinic_management_system'} ensured.`);
 
-    // Load schema.sql
-    const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
+    console.log(`Database '${DB_NAME}' ensured.`);
 
-    // Switch DB
-    await tempConnection.query(`USE \`${DB_NAME}\`;`);
+    const schemaPath = path.join(__dirname, 'schema.sql');
+    if (fs.existsSync(schemaPath)) {
+      const schema = fs.readFileSync(schemaPath, 'utf8');
+      await tempConnection.query(`USE \`${DB_NAME}\`;`);
+      await tempConnection.query(schema);
+      console.log('Tables created successfully.');
+    }
 
-    // Run schema commands
-    await tempConnection.query(schema);
-    console.log('Tables created successfully.');
   } catch (err) {
     console.error('Error initializing database:', err);
     throw err;
@@ -39,57 +39,68 @@ const initDatabase = async () => {
   }
 };
 
-// Initialize DB then create pool
-(async () => {
-  await initDatabase();
+let pool;
 
-  const pool = mysql.createPool({
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASS,
-    database: DB_NAME,
-    port: process.env.DB_PORT || 3306,
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0
-  });
+const initPool = async () => {
+  if (!pool) {
+    await initDatabase();
 
-  const query = async (sql, params = []) => {
-    try {
-      const [results] = await pool.execute(sql, params);
-      return results;
-    } catch (error) {
-      console.error('Database Query Error:', error);
-      throw error;
-    }
-  };
+    pool = mysql.createPool({
+      host: process.env.DB_HOST || 'localhost',
+      user: process.env.DB_USER || 'root',
+      password: process.env.DB_PASS || '',
+      database: DB_NAME,
+      port: process.env.DB_PORT || 3306,
+      waitForConnections: true,
+      connectionLimit: 10,
+      queueLimit: 0
+    });
+  }
+  return pool;
+};
 
-  const transaction = async (queries) => {
-    const connection = await pool.getConnection();
+const query = async (sql, params = []) => {
+  const p = await initPool();
+  const [results] = await p.execute(sql, params);
+  return results;
+};
 
-    try {
-      await connection.beginTransaction();
+const transaction = async (sqlOrQueries, params = []) => {
+  const p = await initPool();
+  const connection = await p.getConnection();
 
-      const results = [];
-      for (const { sql, params } of queries) {
-        const [result] = await connection.execute(sql, params);
-        results.push(result);
+  try {
+    await connection.beginTransaction();
+
+    let results;
+
+    // ✅ support single query
+    if (typeof sqlOrQueries === 'string') {
+      const [result] = await connection.execute(sqlOrQueries, params);
+      results = [result];
+    } 
+    // ✅ support multiple queries
+    else if (Array.isArray(sqlOrQueries)) {
+      results = [];
+      for (const q of sqlOrQueries) {
+        const [res] = await connection.execute(q.sql, q.params);
+        results.push(res);
       }
-
-      await connection.commit();
-      return results;
-    } catch (error) {
-      await connection.rollback();
-      console.error('Transaction Error:', error);
-      throw error;
-    } finally {
-      connection.release();
     }
-  };
 
-  module.exports = {
-    query,
-    transaction,
-    pool
-  };
-})();
+    await connection.commit();
+    return results;
+
+  } catch (error) {
+    await connection.rollback();
+    console.error('Transaction Error:', error);
+    throw error;
+  } finally {
+    connection.release();
+  }
+};
+
+module.exports = {
+  query,
+  transaction
+};
