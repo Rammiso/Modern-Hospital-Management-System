@@ -1,6 +1,6 @@
 const Joi = require('joi');
 const { v4: uuidv4 } = require('uuid');
-const database = require('../config/db');
+const {pool} = require('../config/db');
 
 class PrescriptionModel {
   constructor() {
@@ -39,7 +39,7 @@ class PrescriptionModel {
 
   // Create Prescription
   async create(prescriptionData) {
-    const connection = await database.getConnection();
+    const connection = await pool.getConnection();
     try {
       await connection.beginTransaction();
 
@@ -82,7 +82,7 @@ class PrescriptionModel {
 
   // Find Prescription by ID
   async findById(prescriptionId) {
-    const connection = await database.getConnection();
+    const connection = await pool.getConnection();
     try {
       const [prescriptions] = await connection.execute(
         `SELECT p.*, 
@@ -105,7 +105,7 @@ class PrescriptionModel {
 
   // Update Prescription
   async update(prescriptionId, updateData) {
-    const connection = await database.getConnection();
+    const connection = await pool.getConnection();
     try {
       await connection.beginTransaction();
 
@@ -151,7 +151,7 @@ class PrescriptionModel {
 
   // Dispense Prescription
   async dispense(prescriptionId, userId) {
-    const connection = await database.getConnection();
+    const connection = await pool.getConnection();
     try {
       await connection.beginTransaction();
 
@@ -178,7 +178,7 @@ class PrescriptionModel {
 
   // Cancel Prescription
   async cancel(prescriptionId) {
-    const connection = await database.getConnection();
+    const connection = await pool.getConnection();
     try {
       await connection.beginTransaction();
 
@@ -202,7 +202,7 @@ class PrescriptionModel {
 
   // Search Prescriptions
   async search(filters = {}, limit = 20, offset = 0) {
-    const connection = await database.getConnection();
+    const connection = await pool.getConnection();
     try {
       // Dynamic where clause based on filters
       const whereConditions = [];
@@ -273,4 +273,4 @@ class PrescriptionModel {
   }
 }
 
-module.exports = new PrescriptionModel();
+module.exports = { PrescriptionModel, prescriptionModel: new PrescriptionModel() }

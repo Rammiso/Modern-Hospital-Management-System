@@ -6,7 +6,7 @@ const ConsultationModel = require('../models/consultation.model');
 const authMiddleware = require('../middleware/authMiddleware.js');
 
 // Protect all routes
-router.use(authMiddleware.protect);
+// router.use(authMiddleware.protect);
 
 // Create Consultation
 router.post(
