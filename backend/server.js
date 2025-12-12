@@ -21,23 +21,11 @@ const authRoutes = require("./routes/authRoutes");
 const patientRoutes = require("./routes/patientRoutes");
 const consulationRoutes = require("./routes/consultationRoutes");
 const prescriptionRoutes = require("./routes/prescription.routes");
-const labRequestRoutes = require("./routes/labRequestRoutes");
-const billingRoutes = require("./routes/billingRoutes");
-const paymentRoutes = require("./routes/paymentRoutes");
-
-
-
-
-
 app.use("/api/auth", authRoutes);
 app.use("/api/patients", patientRoutes);
 app.use("/api/appointments", require("./routes/appointment"));
 app.use("/api/consultations", consulationRoutes);
 app.use("/api/prescriptions", prescriptionRoutes);
-app.use("/api/lab-requests", labRequestRoutes);
-app.use("/api/bills", billingRoutes);
-
-app.use("/api/bills", paymentRoutes);
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {
