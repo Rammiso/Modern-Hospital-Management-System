@@ -12,8 +12,8 @@ class ConsultationModel {
       patient_id: Joi.string().required(),
       doctor_id: Joi.string().required(),
 
-      blood_pressure_systolic: Joi.number().integer().min(70).max(250).optional().allow(null),
-      blood_pressure_diastolic: Joi.number().integer().min(40).max(150).optional().allow(null),
+      blood_pressure_systolic: Joi.number().integer().min(75).max(250).optional().allow(null),
+      blood_pressure_diastolic: Joi.number().integer().min(30).max(150).optional().allow(null),
       temperature: Joi.number().precision(2).min(35).max(42).optional().allow(null),
       pulse_rate: Joi.number().integer().min(40).max(220).optional().allow(null),
       respiratory_rate: Joi.number().integer().min(10).max(60).optional().allow(null),
