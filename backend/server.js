@@ -21,11 +21,13 @@ const authRoutes = require("./routes/authRoutes");
 const patientRoutes = require("./routes/patientRoutes");
 const consulationRoutes = require("./routes/consultationRoutes");
 const prescriptionRoutes = require("./routes/prescription.routes");
+const labRequestRoutes = require("./routes/labRequestRoutes");
 app.use("/api/auth", authRoutes);
 app.use("/api/patients", patientRoutes);
 app.use("/api/appointments", require("./routes/appointment"));
 app.use("/api/consultations", consulationRoutes);
 app.use("/api/prescriptions", prescriptionRoutes);
+app.use("/api/lab-requests", labRequestRoutes);
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {
