@@ -2,19 +2,11 @@
 
 const Joi = require('joi');
 
-/**
- * Middleware for validating request data against a Joi schema
- * @param {Joi.ObjectSchema} schema - Joi validation schema
- * @param {string} [source='body'] - Request source to validate (body, query, params)
- * @returns {Function} Express middleware function
- */
 const validateMiddleware = (schema, source = 'body') => {
   return async (req, res, next) => {
     try {
-      // Determine the source of validation
       const dataToValidate = req[source];
 
-      // If no data to validate
       if (!dataToValidate || (typeof dataToValidate === 'object' && Object.keys(dataToValidate).length === 0)) {
         return res.status(400).json({
           message: `No ${source} data provided`,
@@ -22,7 +14,6 @@ const validateMiddleware = (schema, source = 'body') => {
         });
       }
 
-      // === AUTO-HANDLE UPDATE ROUTES (PUT/PATCH) ===
       let validationSchema = schema;
 
       if ((req.method === 'PUT' || req.method === 'PATCH') && schema && typeof schema.describe === 'function') {
@@ -30,11 +21,9 @@ const validateMiddleware = (schema, source = 'body') => {
         const keys = Object.keys(described.keys || {});
 
         if (keys.length > 0) {
-          // Joi 17+ supports .fork()
           if (typeof schema.fork === 'function') {
             validationSchema = schema.fork(keys, field => field.optional().allow(null, ''));
           } else {
-            // Fallback for Joi 16 or older
             const optionalFields = {};
             keys.forEach(key => {
               optionalFields[key] = Joi.any().optional().allow(null, '');
@@ -44,15 +33,13 @@ const validateMiddleware = (schema, source = 'body') => {
         }
       }
 
-      // === PERFORM VALIDATION ===
+      // ❗ FIXED: removed allowUnknown (invalid here)
       const { error, value } = validationSchema.validate(dataToValidate, {
         abortEarly: false,
         stripUnknown: true,
-        convert: true,
-        allowUnknown: false
+        convert: true
       });
 
-      // === HANDLE VALIDATION ERRORS ===
       if (error) {
         const validationErrors = error.details.map(detail => ({
           message: detail.message.replace(/"/g, ''),
@@ -67,7 +54,6 @@ const validateMiddleware = (schema, source = 'body') => {
         });
       }
 
-      // === SUCCESS: Attach cleaned data ===
       req[source] = value;
       next();
 
@@ -82,7 +68,6 @@ const validateMiddleware = (schema, source = 'body') => {
   };
 };
 
-// === UTILITY VALIDATORS (keep your originals) ===
 validateMiddleware.validateId = Joi.string()
   .uuid({ version: 'uuidv4' })
   .message('Invalid ID format');
@@ -94,7 +79,6 @@ validateMiddleware.validatePagination = Joi.object({
   order: Joi.string().valid('asc', 'desc').default('desc')
 });
 
-// === ERROR FORMATTER ===
 validateMiddleware.formatValidationError = (error) => {
   if (!error || !error.isJoi) return null;
 
