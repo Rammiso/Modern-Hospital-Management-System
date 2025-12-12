@@ -305,4 +305,4 @@ class PharmacyInventoryModel {
   }
 }
 
-module.exports = new PharmacyInventoryModel();
+module.exports = { PharmacyInventoryModel, pharmacyInventoryModel: new PharmacyInventoryModel() };

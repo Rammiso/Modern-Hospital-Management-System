@@ -22,14 +22,14 @@ const patientRoutes = require("./routes/patientRoutes");
 const consulationRoutes = require("./routes/consultationRoutes");
 const prescriptionRoutes = require("./routes/prescription.routes");
 const labRequestRoutes = require("./routes/labRequestRoutes");
-
+const pharmacyRoutes=require('./routes/pharmacy-inventory.routes.js');
 app.use("/api/auth", authRoutes);
 app.use("/api/patients", patientRoutes);
 app.use("/api/appointments", require("./routes/appointment"));
 app.use("/api/consultations", consulationRoutes);
 app.use("/api/prescriptions", prescriptionRoutes);
 app.use("/api/lab-requests", labRequestRoutes);
-
+app.use('/api/pharmacy-inventory',pharmacyRoutes)
 // Health check endpoint
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok", message: "Server is running" });
