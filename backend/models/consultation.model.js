@@ -219,7 +219,7 @@ class ConsultationModel {
       errors.push('Pulse rate must be between 40 and 220 bpm');
     }
 
-    if (v.spo2 && (v.spo2 < 70 || v.spo2 > 100)) {
+    if (v.spo2 && (v.spo2 < 60 || v.spo2 > 100)) {
       errors.push('Oxygen saturation must be between 70% and 100%');
     }
 
