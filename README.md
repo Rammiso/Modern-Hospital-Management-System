@@ -311,7 +311,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support
 
-For support, email your.email@example.com or open an issue in the GitHub repository.
+For support, email mushas1248@gmail.com or open an issue in the GitHub repository.
 
 ## 🗺️ Roadmap
 
