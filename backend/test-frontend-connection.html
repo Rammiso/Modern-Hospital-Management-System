@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Frontend Connection</title>
+</head>
+<body>
+    <h1>Test Lab Tests API</h1>
+    <button onclick="testLabTests()">Test Lab Tests</button>
+    <div id="result"></div>
+
+    <script>
+        async function testLabTests() {
+            try {
+                const response = await fetch('http://localhost:4000/api/lab/tests');
+                const data = await response.json();
+                
+                document.getElementById('result').innerHTML = `
+                    <h2>Success!</h2>
+                    <p>Status: ${response.status}</p>
+                    <p>Tests Count: ${data.data?.length || 0}</p>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (error) {
+                document.getElementById('result').innerHTML = `
+                    <h2>Error!</h2>
+                    <p>${error.message}</p>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

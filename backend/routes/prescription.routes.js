@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const PrescriptionController = require('../controllers/prescription.controller');
+const PrescriptionController = require('../controllers/prescription');
 const validateMiddleware = require('../middleware/validate.middleware');
 const { PrescriptionModel } = require('../models/prescription.model');
 const authMiddleware = require('../middleware/authMiddleware');

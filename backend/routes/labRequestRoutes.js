@@ -12,6 +12,9 @@ router.get("/consultation/:consultationId", verifyToken, controller.getLabReques
 // Get a single lab request by ID
 router.get("/:id", verifyToken, controller.getLabRequest);
 
+// Get lab request status (for polling)
+router.get("/:id/status", verifyToken, controller.getLabRequestStatus);
+
 // Update lab request (status/result)
 router.put("/:id", verifyToken, controller.updateLabRequest);
 

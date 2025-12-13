@@ -1,14 +1,45 @@
-# Node dependencies
+# Dependencies
 node_modules/
+package-lock.json
 
-# Env files
+# Environment variables
 .env
+.env.local
+.env.*.local
 
 # Logs
+logs/
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# OS files
+# OS
 .DS_Store
 Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Testing
+coverage/
+.nyc_output/
+
+# Production
+dist/
+build/
+
+# Docs
+*.docx
+*.txt
+
+# Markdown files (except README.md)
+*.md
+!README.md
+
+# Kiro AI files
+.kiro/

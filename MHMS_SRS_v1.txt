@@ -1,0 +1,1147 @@
+Modern Hospital Management System (MHMS)
+
+
+
+ 1. Introduction
+
+
+
+ 1.1 Purpose
+
+
+
+The purpose of this Software Requirements Specification (SRS) is to provide a comprehensive, detailed, and structured description of the Modern Hospital Management System (MHMS). This SRS acts as the single source of truth outlining system behavior, functional requirements, workflow logic, non-functional properties, constraints, and operational guidelines essential for development, testing, deployment, and maintenance.
+
+
+
+ 1.2 Scope
+
+
+
+The MHMS is a cloud-based, web-enabled digital healthcare platform developed for private hospitals in Ethiopia. It automates patient registration, outpatient and inpatient workflows, laboratory operations, pharmacy dispensing, billing and insurance processing, HR and staff management, inventory monitoring, reporting, emergency triage, telemedicine, and patient self-service capabilities.
+
+The system eliminates manual paper-based workflows, reduces patient waiting time, improves record accuracy, supports efficient healthcare service delivery, and enhances patient engagement through modern digital channels.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 1.3 Definitions, Acronyms, and Abbreviations
+
+- HMS: Hospital Management System
+
+- MHMS: Modern Hospital Management System
+
+- OPD: Outpatient Department
+
+- IPD: Inpatient Department
+
+- EMR: Electronic Medical Record
+
+- EHR: Electronic Health Record
+
+- PHN: Patient Health Number
+
+- RBAC: Role-Based Access Control
+
+- PFM: Patient Flow Management
+
+- CRM: Customer Relationship Management
+
+- API: Application Programming Interface
+
+- JWT: JSON Web Token
+
+- UI: User Interface
+
+- UX: User Experience
+
+- EHR: Electronic Health Records
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 1.4 Technologies Used
+
+- Backend: Node.js + Express
+
+- Frontend: React.js, Tailwind CSS
+
+- Database: MySQL with Redis caching
+
+- Authentication: JWT with OAuth2
+
+- Hosting: Cloud (AWS, Azure, DigitalOcean, or similar)
+
+- Real-time Communication: Socket.io
+
+ Payment Integration: M-Pesa Developer AI
+
+ 2. Overall Description
+
+2.1 System Perspective
+
+The MHMS is designed as a modular, service-oriented architecture (SOA) system with microservices for scalability. Each module operates independently but communicates through a central REST API and message queue. The platform supports multi-user access, concurrent sessions, role-based operations, and real-time updates across all modules.
+
+ 2.2 User Classes
+
+ Direct Users:
+
+Super Admin:
+
+Full access to configuration
+
+User roles
+
+System monitoring
+
+Analytics
+
+Receptionist:
+
+Patient registration
+
+Appointment booking
+
+Billing initiation
+
+Front desk operations
+
+Doctor:
+
+Manage consultations
+
+Diagnoses
+
+Prescriptions
+
+Telemedicine sessions
+
+Patient EMR
+
+Send request to Lab for further diagnosis
+
+Nurse:
+
+Manage vitals
+
+Triage
+
+Inpatient care activities
+
+Patient monitoring
+
+Lab Technician:
+
+Handle test requests
+
+Result entry
+
+Approval
+
+Sample tracking
+
+Pharmacist:
+
+Dispense medication
+
+Track stock
+
+Verify prescriptions
+
+Inventory management
+
+Cashier:
+
+Manage billing
+
+Payments
+
+Receipts
+
+Insurance claims
+
+HR Manager:
+
+Staff management
+
+Payroll processing
+
+Attendance tracking
+
+Performance management
+
+
+
+ Indirect Users:
+
+Patient: Self-service portal for booking, medical records access, telemedicine, payments, and communication.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 2.3 Product Features (High-Level)
+
+- Centralized EMR/EHR with complete patient history
+
+- Real-time appointment and queue system with patient self-booking
+
+- Patient self-service portal (web and mobile-responsive)
+
+- Telemedicine with video consultation, screen sharing, and secure messaging
+
+- Lab workflow automation with IoT device integration
+
+- Pharmacy stock and dispensing with automated reordering
+
+- Billing with  payment methods
+
+- Payroll management with commission and bonus structures
+
+- Advanced analytics and business intelligence dashboard
+
+- Medical CRM for patient engagement and retention
+
+- Multilingual interface (English + Afan Oromo)
+
+- Cloud-based with offline capability for critical functions
+
+
+
+ 2.4 Operating Environment
+
+The system operates on:
+
+- Desktop, laptop, and tablet devices through modern browsers (Chrome 80+, Firefox 75+, Safari 13+)
+
+- Mobile-responsive design for smartphones
+
+- Backend runs on Linux-based cloud servers (Ubuntu 20.04 LTS or later)
+
+- Database: MySQL 8.0+ with replication support
+
+- Minimum bandwidth: 2 Mbps for standard operations, 5 Mbps for telemedicine
+
+
+
+
+
+
+
+ 2.5 Constraints
+
+
+
+- Limited offline functionality (core patient registration and vitals capture available offline)
+
+- Staff must complete mandatory training program (minimum 8 hours)
+
+- Cloud hosting cost depends on usage and scalability requirements
+
+- Internet dependency for telemedicine and real-time sync
+
+- Compliance with Ethiopian healthcare regulations and data protection laws
+
+
+
+2.6 Assumptions and Dependencies
+
+- Hospital maintains stable internet connectivity (99% uptime)
+
+- Patients provide accurate information during registration
+
+- Medical staff follow standardized clinical workflows
+
+- Availability of SMS gateway service for notifications
+
+- Integration with national health insurance system when available
+
+- Regular power backup systems in place at healthcare facilities
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 3. System Features
+
+
+
+ 3.1 Patient Registration & Identity Management
+
+The system must allow receptionists to register new patients, assign unique Patient IDs, upload documents, and capture demographic data. The system must prevent duplicate registrations using algorithms that compare phone numbers, names, and dates of birth.
+
+
+
+Functional Requirements:
+
+- FR-PR-01: The system shall generate a unique patient card number with barcode/QR code.
+
+- FR-PR-03: The system shall validate required fields with real-time validation.
+
+- FR-PR-04: The system shall allow editing of patient profiles by authorized staff with audit trail.
+
+- FR-PR-05: The system shall integrate with national ID systems for data verification.
+
+
+
+ 3.2 Appointment Scheduling & Online Booking
+
+
+
+Supports doctor-specific scheduling, cancellations, no-show marking, automated reminders, and patient self-booking through online portal. Includes waitlist management and pre-payment options.
+
+
+
+Functional Requirements:
+
+- FR-AP-01: The system shall display real-time available time slots per doctor/service.
+
+- FR-AP-02: The system shall detect scheduling conflicts across resources (doctor, room, equipment).
+
+- FR-AP-03: Patients shall be able to self-book appointments via online portal/mobile interface.
+
+- FR-AP-04: The system shall manage waitlists and automatic slot filling for cancellations.
+
+- FR-AP-08: The system shall allow patients to reschedule/cancel appointments online with policy enforcement.
+
+
+
+3.3 Patient Self-Service Portal
+
+
+
+Secure portal for patients to access their medical information, book appointments, view results, make payments, and communicate with healthcare providers.
+
+Functional Requirements:
+
+- FR-PP-01: Patients shall access portal via secure login (mobile number OTP/password).
+
+- FR-PP-02: Portal shall display upcoming appointments with option to join telemedicine session.
+
+- FR-PP-03: Patients shall receive automated health reminders and educational content.
+
+- FR-PP-04: Portal shall provide secure messaging with healthcare providers.
+
+- FR-PP-05: Patients shall provide feedback and rate their healthcare experience.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+3.4 Electronic Health Records (EMR/EHR)
+
+
+
+Comprehensive digital record system storing patient's complete medical history, accessible to authorized providers across departments.
+
+Functional Requirements:
+
+- FR-EHR-01: System shall store structured clinical data (diagnoses, medications, allergies, immunizations).
+
+- FR-EHR-02: System shall support clinical decision support with alerts for drug interactions.
+
+- FR-EHR-03: System shall allow e-prescribing with direct transmission to pharmacy.
+
+- FR-EHR-04: System shall maintain problem lists, progress notes, and treatment plans.
+
+- FR-EHR-05: System shall support templates for common conditions to streamline documentation.
+
+- FR-EHR-06: System shall provide interoperability with external systems via FHIR/HL7 standards.
+
+- FR-EHR-07: System shall display patient history in timeline view for quick clinical review.
+
+- FR-EHR-08: System shall support attachment of images, scans, and documents to patient records.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 3.5 Telemedicine Module
+
+Secure video consultation platform with integrated clinical tools for remote healthcare delivery.
+
+Functional Requirements:
+
+- FR-TM-01: System shall schedule telemedicine appointments with unique secure links.
+
+- FR-TM-02: System shall provide HD video consultation with screen sharing capability.
+
+- FR-TM-03: System shall include virtual waiting room with queue management.
+
+- FR-TM-04: System shall support real-time vitals integration from IoT devices.
+
+- FR-TM-05: System shall provide secure chat and file sharing during consultation.
+
+- FR-TM-06: System shall record consultations (with patient consent) for medical records.
+
+- FR-TM-07: System shall integrate e-prescribing and lab order directly from telemedicine session.
+
+- FR-TM-08: System shall support group consultations for family therapy or multidisciplinary teams.
+
+- FR-TM-09: System shall comply with healthcare privacy regulations for remote care.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+3.6 OPD & IPD Management
+
+Doctors can record full clinical encounters, vitals, assessments, and treatment plans for both outpatient and inpatient care.
+
+Functional Requirements:
+
+- FR-OPD-01: System shall allow capturing vitals with trends and graphical representation.
+
+- FR-OPD-02: System shall store diagnosis (ICD-10/11 coded), treatment plans, and follow-up notes.
+
+- FR-OPD-03: System shall generate OPD slips with diagnosis and prescriptions.
+
+- FR-IPD-01: System shall support admission, discharge, and transfer (ADT) processes.
+
+- FR-IPD-02: System shall manage bed assignment with visual ward layout.
+
+- FR-IPD-03: System shall track inpatient progress notes, nursing care plans, and rounds.
+
+- FR-IPD-04: System shall generate discharge summaries with follow-up instructions.
+
+- FR-IPD-05: System shall monitor length of stay and bed turnover rates.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+3.7 Laboratory Module
+
+
+
+End-to-end lab management from test ordering to result delivery with instrument integration.
+
+
+
+Functional Requirements:
+
+- FR-LAB-01: System shall allow doctors to order tests electronically with clinical context.
+
+- FR-LAB-02: Lab technicians shall update sample collection, processing, and status.
+
+- FR-LAB-03: System shall notify patients and doctors when results are ready via portal.
+
+- FR-LAB-04: System shall generate lab reports with reference ranges and graphical trends.
+
+
+
+3.8 Pharmacy Management
+
+Complete pharmacy workflow including prescription verification, dispensing, inventory control, and automated reordering.
+
+
+
+Functional Requirements:
+
+- FR-PH-01: Pharmacist shall view and verify electronic prescriptions with allergy checks.
+
+- FR-PH-02: System shall track batch numbers, expiry dates, and quantities with FIFO/FEFO.
+
+- FR-PH-03: Stock shall auto-update after dispensing with real-time inventory levels.
+
+- FR-PH-04: System shall manage supplier information and purchase history.
+
+- FR-PH-05: System shall track controlled substances with additional security and reporting.
+
+
+
+
+
+
+
+
+
+3.9 Billing & Insurance
+
+Comprehensive financial management with support for multiple payment methods, insurance claims, and detailed reporting.
+
+Functional Requirements:
+
+- FR-BL-01: System shall generate itemized invoices with service breakdown.
+
+- FR-BL-02: Cashier shall record payments (cash, card, mobile money, insurance) with receipts.
+
+- FR-BL-03: System shall support insurance claim generation and tracking with EDI 837 format.
+
+- FR-BL-04: System shall manage pre-authorizations and eligibility verification.
+
+- FR-BL-05: System shall handle partial payments, payment plans, and outstanding balances.
+
+- FR-BL-06: System shall integrate with accounting software (Xero/QuickBooks).
+
+- FR-BL-07: System shall generate financial reports (daily collections, AR aging, revenue by department).
+
+- FR-BL-08: System shall support discount policies and promotional packages.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+3.10 HR, Staff Management & Payroll
+
+
+
+Complete human resources management including staff records, attendance, payroll processing, and performance management.
+
+Functional Requirements:
+
+- FR-HR-01: The Administrator shall possess the capability to add, modify, and deactivate staff accounts, along with the assignment of roles.  
+
+- FR-HR-02: The system shall implement Role-Based Access Control (RBAC) with intricate permission settings.  
+
+- FR-HR-03: The system shall meticulously monitor staff attendance through biometric verification or QR code check-in.  
+
+- FR-HR-04: The system shall facilitate the management of leave requests and the corresponding approval workflow.  
+
+- FR-HR-05: The system shall proficiently compute payroll, accommodating salary, hourly, and commission-based structures.  
+
+- FR-HR-06: The system shall generate payslips that include deductions for taxes, insurance, and loans.  
+
+- FR-HR-07: The system shall diligently track overtime, bonuses, and incentives.  
+
+- FR-HR-08: The system shall efficiently manage staff schedules and shift rotations.  
+
+- FR-HR-09: The system shall maintain comprehensive records of staff training and certification tracking.  
+
+- FR-HR-10: The system shall support performance evaluations and the tracking of goals.  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+3.11 Inventory Management
+
+
+
+Hospital-wide inventory control beyond pharmacy, including medical supplies, equipment, and consumables.
+
+Functional Requirements:
+
+- FR-INV-01: System shall track stock levels across all hospital departments.
+
+- FR-INV-02: System shall send low-stock alerts designated staff on their respective page
+
+- FR-INV-03: System shall manage inventory categorization and multiple storage locations.
+
+- FR-INV-04: System shall track equipment maintenance schedules and service history.
+
+- FR-INV-05: System shall generate consumption reports and wastage analysis.
+
+- FR-INV-06: System shall support barcode/RFID tagging for asset tracking.
+
+- FR-INV-07: System shall manage supplier performance and lead time tracking.
+
+- FR-INV-08: System shall automate purchase requisition and approval workflows.
+
+
+
+ 3.12 Emergency & Triage
+
+Streamlined emergency department operations with priority-based patient flow.
+
+Functional Requirements:
+
+- FR-EM-01: Nurse shall assign triage level (I-V) with recommended response times.
+
+- FR-EM-02: Critical cases shall bypass normal queue with immediate notification to trauma team.
+
+- FR-EM-03: System shall track emergency department throughput metrics.
+
+- FR-EM-04: System shall maintain disaster mode for mass casualty incidents.
+
+- FR-EM-05: System shall integrate with ambulance services for pre-arrival notifications.
+
+
+
+
+
+
+
+ 3.13 Medical CRM & Patient Engagement
+
+
+
+Customer relationship management for healthcare focusing on patient retention, satisfaction, and communication.
+
+
+
+Functional Requirements:
+
+- FR-CRM-01: System shall segment patients based on demographics, conditions, and behavior.
+
+- FR-CRM-02: System shall track patient satisfaction scores and feedback.
+
+- FR-CRM-03: System shall automate patient communication (appointment reminders, follow-ups, health tips).
+
+- FR-CRM-04: System shall manage targeted health campaigns (vaccination drives, screening programs).
+
+- FR-CRM-05: System shall track patient lifetime value and retention metrics.
+
+- FR-CRM-06: System shall identify at-risk patients for proactive outreach.
+
+- FR-CRM-07: System shall manage patient referrals and incentive programs.
+
+- FR-CRM-08: System shall provide marketing analytics on patient acquisition channels.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+3.14 Reporting, Analytics & Business Intelligence
+
+
+
+Comprehensive reporting system with dashboards, predictive analytics, and business intelligence tools.
+
+Functional Requirements:
+
+- FR-RPT-01: System shall generate daily, weekly, monthly financial reports.
+
+- FR-RPT-02: System shall generate clinical statistics (disease prevalence, treatment outcomes).
+
+- FR-RPT-03: System shall provide operational dashboards with KPIs for each department.
+
+- FR-RPT-04: System shall support ad-hoc reporting with drag-and-drop query builder.
+
+- FR-RPT-05: System shall provide predictive analytics for patient volume and resource planning.
+
+- FR-RPT-06: System shall generate staff productivity and performance reports.
+
+- FR-RPT-07: System shall analyze patient flow and bottleneck identification.
+
+- FR-RPT-08: System shall provide revenue cycle analytics with collection performance.
+
+- FR-RPT-09: System shall integrate business intelligence with data visualization tools.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 4. External Interface Requirements
+
+
+
+4.1 User Interfaces
+
+The UI must be clean, responsive, accessible, and intuitive for users with varying technical skills.
+
+
+
+Requirements:
+
+Modern, professional healthcare design with consistent branding
+
+Fully responsive design for desktop, tablet, and mobile devices
+
+Afan Oromo language support with easy language toggle
+
+Light/dark mode with adjustable contrast for accessibility
+
+Dashboard widgets customisable by user role
+
+Patient portal with simplified, patient-friendly interface
+
+Telemedicine interface with minimal clicks for joining sessions
+
+Touch-friendly interface for tablet users in clinical settings
+
+WCAG 2.1 AA compliance for accessibility
+
+
+
+4.2 Hardware Interfaces
+
+Required Hardware Integration:
+
+Barcode/QR code scanners for patient IDs and medication
+
+Biometric devices for staff attendance and patient identification
+
+Card readers for insurance cards and payment processing
+
+Printers for prescriptions, receipts, and reports
+
+Medical devices with HL7/FHIR interface capability (vitals monitors, lab equipment)
+
+Webcams and microphones for telemedicine consultations
+
+Tablets for mobile clinical documentation
+
+Network infrastructure for reliable connectivit
+
+
+
+
+
+
+
+
+
+
+
+4.3 Software Interfaces
+
+Third-Party Integrations:
+
+SMS Gateway (Twilio, local Ethiopian providers)
+
+Email service (SendGrid, AWS SES, or equivalent)
+
+Cloud database with replication and backup
+
+Payment gateways (Stripe, PayPal, local mobile money APIs)
+
+Video conferencing (WebRTC with fallback to Zoom/Teams API)
+
+Accounting software (Xero, QuickBooks APIs)
+
+National Health Insurance System API
+
+Laboratory information systems (LIS) interfaces
+
+Picture Archiving and Communication System (PACS) for medical imaging
+
+Mobile push notification services (Firebase, OneSignal)
+
+Mapping services for ambulance routing and location services
+
+5. Nonfunctional Requirements
+
+5.1 Performance Requirements
+
+System must respond within 1 second for essential operations (patient lookup, appointment booking)
+
+Must support up to 1000 concurrent users with linear scalability
+
+Telemedicine video must maintain 30fps at 720p minimum with <150ms latency
+
+Database queries must return results in <3 seconds for complex reports
+
+System must handle peak loads of 100 appointment bookings per minute
+
+Backup operations must not impact system performance during working hours
+
+Mobile interface must load in <3 seconds on 3G connections
+
+5.2 Security Requirements
+
+Must comply with HIPAA-equivalent data protection standards for Ethiopia
+
+All sensitive data must be encrypted at rest (AES-256) and in transit (TLS 1.3)
+
+Must implement RBAC with principle of least privilege
+
+Must use JWT tokens with short expiration and refresh token mechanism
+
+Must maintain audit logs of all data access and modifications
+
+Must implement brute force protection and account lockout policies
+
+Must conduct regular security vulnerability assessments and penetration testing
+
+Must support two-factor authentication for administrative accounts
+
+Must ensure data sovereignty compliance within Ethiopian jurisdiction
+
+5.3 Reliability & Availability
+
+System uptime of 99.5% during business hours (7 AM - 10 PM)
+
+Automatic failover mechanisms for critical services
+
+Disaster recovery with RPO < 1 hour and RTO < 4 hours
+
+Redundant database architecture with automatic replication
+
+Regular health monitoring with automated alerts for system issues
+
+Graceful degradation when third-party services are unavailable
+
+Offline capability for critical functions (patient registration, vitals capture)
+
+5.4 Maintainability
+
+Modular codebase with clear separation of concerns
+
+Well-documented REST API with versioning support
+
+Comprehensive logging with structured JSON format
+
+Configuration managed externally (not hardcoded)
+
+Automated testing suite covering critical business logic
+
+Code documentation following industry standards
+
+Easy deployment process with containerization support
+
+Database migration scripts for version upgrades
+
+5.5 Usability
+
+Intuitive navigation with maximum 3 clicks to common functions
+
+Consistent UI patterns across all modules
+
+Contextual help and tooltips for complex functions
+
+Training mode for new users with guided workflows
+
+Keyboard shortcuts for power users
+
+Multilingual support with easy language switching
+
+Accessibility features for users with disabilities
+
+Mobile-optimized interface for on-the-go access
+
+5.6 Scalability
+
+Horizontal scaling support for all microservices
+
+Database sharding capability for multi-hospital deployments
+
+Caching layer for frequently accessed data
+
+Load balancing across multiple geographic regions
+
+Support for 10,000+ patient records with sub-second retrieval
+
+Architecture supporting future addition of new modules without system redesign
+
+
+
+System Diagrams (Placeholders)
+
+6.1 Use Case Diagram
+
+
+
+6.2 Context Diaghram
+
+
+
+
+
+
+
+
+
+
+
+6.4 Class Diagram
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+7. Data Model
+
+
+
+Includes detailed attributes for major tables such as:
+
+• Patients  
+
+• Staff  
+
+• Users  
+
+• Appointments  
+
+• Medical Records  
+
+• Lab Requests  
+
+• Lab Results  
+
+• Pharmacy Inventory  
+
+• Prescriptions  
+
+• Billing  
+
+• Payments  
+
+• Audit Logs  
+
+• Notifications  
+
+
+
+Each table includes:
+
+• Primary key  
+
+• Foreign keys  
+
+• Constraints  
+
+• Field descriptions  
+
+
+
+8. Other Requirements
+
+
+
+8.1 Logging and Monitoring  
+
+All actions must be logged with timestamps.
+
+
+
+8.2 Backup  
+
+System shall auto-backup every 24 hours.
+
+
+
+8.3 Localization  
+
+English and Afan Oromo supported.
+
+
+
+8.4 Scalability  
+
+System shall support multi-hospital expansion in future.
+
+
+
+9. Future Enhancements
+
+
+
+• AI diagnosis  
+
+• Mobile apps  
+
+• Insurance API integration  
+
+• Self-service patient portal  
+
+
+
+10. Appendices
+
+
+
+A. Glossary  
+
+B. References  
+
+C. Sample Forms

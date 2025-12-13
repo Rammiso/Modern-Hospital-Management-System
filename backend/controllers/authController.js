@@ -215,7 +215,7 @@ const login = async (req, res) => {
 const getMe = async (req, res) => {
   try {
     // req.user.id comes from middleware
-    const [userRows] = await db.query(
+    const userRows = await db.query(
       `
       SELECT u.id, u.email, u.full_name, u.role_id, u.phone, u.specialization, LOWER(r.role_name) as role
       FROM users u

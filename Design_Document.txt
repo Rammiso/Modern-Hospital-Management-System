@@ -1,0 +1,2017 @@
+MHMS SYSTEM DESIGN DOCUMENT
+
+
+
+1. SYSTEM ARCHITECTURE
+
+1.1 High-Level Architecture
+
+┌─────────────────────────────────────────────────────────┐
+
+│                    CLIENT LAYER                          │
+
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐   │
+
+│  │  React   │ │      React   │ │           React   │ │  	React   │   │
+
+│  │Reception │ │  Doctor  │ │          Pharmacy │ │	   Lab    │   │
+
+│  │   UI     │ │    UI    │ │    UI    │ │        UI    │   │
+
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘   │
+
+└─────────────────────────────────────────────────────────┘
+
+                              │
+
+                              ▼
+
+┌─────────────────────────────────────────────────────────┐
+
+│                    API GATEWAY LAYER                     │
+
+│  ┌──────────────────────────────────────────────────┐   │
+
+│  │              Express.js Server                    │   │
+
+│  │  • Authentication Middleware                     │   │
+
+│  │  • Request Validation                            │   │
+
+│  │  • Rate Limiting                                │   │
+
+│  │  • CORS Handling                                │   │
+
+│  └──────────────────────────────────────────────────┘   │
+
+└─────────────────────────────────────────────────────────┘
+
+                              │
+
+                              ▼
+
+┌─────────────────────────────────────────────────────────┐
+
+│                 BUSINESS LOGIC LAYER                    │
+
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐   │
+
+│  │ Patient  │ │	Appoint-  │ │	Clinical  │ │	Billing   │   │
+
+│  │ Service  │ │ 	ment     │ │	 Service  │ │ 	Service  │   │
+
+│  └──────────┘ │ Service  │ └──────────┘ └──────────┘   │
+
+│               └──────────┘                             │
+
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐                │
+
+│  │Pharmacy  │ │ Lab      │ │ 	Report   │                │
+
+│  │ Service  │ │ 	Service  │ │	 Service  │                │
+
+│  └──────────┘ └──────────┘ └──────────┘                │
+
+└─────────────────────────────────────────────────────────┘
+
+                              │
+
+                              ▼
+
+┌─────────────────────────────────────────────────────────┐
+
+│                   DATA ACCESS LAYER                     │
+
+│  ┌──────────────────────────────────────────────────┐   │
+
+│  │               MySQL Database                      │   │
+
+│  │  • Patients, Appointments, Consultations         │   │
+
+│  │  • Pharmacy, Lab, Billing Tables                 │   │
+
+│  │  • Users & Roles                                 │   │
+
+│  └──────────────────────────────────────────────────┘   │
+
+└─────────────────────────────────────────────────────────┘
+
+```
+
+
+
+
+
+1.2 Technology Stack
+
+Frontend:
+
+Framework: React 18
+
+Styling: Tailwind CSS + Headless UI
+
+State Management: React Context (no Redux for speed)
+
+HTTP Client: Axios
+
+Form Handling: React Hook Form
+
+Routing: React Router v6
+
+Icons: Heroicons
+
+Charts: Recharts (basic)
+
+Backend:
+
+Runtime: Node.js 18+
+
+Framework: Express.js
+
+ORM: Prisma (for rapid development)
+
+Authentication: JWT + bcrypt
+
+Validation: Joi/Zod
+
+File Upload: Multer (optional)
+
+CORS: cors middleware
+
+Database:
+
+Primary: MySQL 8.0
+
+Caching: None for MVP (add Redis later)
+
+Infrastructure:
+
+Hosting: Vercel (frontend) + Railway (backend + DB)
+
+CI/CD: GitHub Actions (basic)
+
+Monitoring: None for MVP
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+2. DATABASE DESIGN
+
+
+
+2.1 Core Tables (Minimum Viable Schema)
+
+
+
+Table 1: users
+
+CREATE TABLE users (
+
+  id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+
+  email VARCHAR(100) UNIQUE NOT NULL,
+
+  phone VARCHAR(20) UNIQUE,
+
+  password_hash VARCHAR(255) NOT NULL,
+
+  role ENUM('admin', 'receptionist', 'doctor', 'pharmacist', 'lab_technician', 'cashier') NOT NULL,
+
+  full_name VARCHAR(100) NOT NULL,
+
+  specialization VARCHAR(100), -- For doctors
+
+  is_active BOOLEAN DEFAULT true,
+
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  INDEX idx_role (role),
+
+  INDEX idx_email (email)
+
+);
+
+```
+
+
+
+#### **Table 2: patients**
+
+```sql
+
+CREATE TABLE patients (
+
+  id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+
+  patient_id VARCHAR(20) UNIQUE NOT NULL, -- Format: HOSP-YYYY-MMDD-001
+
+  full_name VARCHAR(100) NOT NULL,
+
+  phone VARCHAR(20) UNIQUE NOT NULL,
+
+  email VARCHAR(100),
+
+  date_of_birth DATE,
+
+  gender ENUM('male', 'female', 'other'),
+
+  address TEXT,
+
+  emergency_contact VARCHAR(20),
+
+  blood_group ENUM('A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'),
+
+  allergies TEXT,
+
+  created_by VARCHAR(36) REFERENCES users(id),
+
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  INDEX idx_patient_id (patient_id),
+
+  INDEX idx_phone (phone),
+
+  INDEX idx_name (full_name)
+
+);
+
+```
+
+
+
+#### **Table 3: appointments**
+
+```sql
+
+CREATE TABLE appointments (
+
+  id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+
+  patient_id VARCHAR(36) NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+
+  doctor_id VARCHAR(36) NOT NULL REFERENCES users(id),
+
+  appointment_date DATE NOT NULL,
+
+  appointment_time TIME NOT NULL,
+
+  status ENUM('scheduled', 'checked_in', 'in_consultation', 'completed', 'cancelled', 'no_show') DEFAULT 'scheduled',
+
+  type ENUM('new', 'follow_up', 'emergency') DEFAULT 'new',
+
+  reason TEXT,
+
+  created_by VARCHAR(36) REFERENCES users(id),
+
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  UNIQUE KEY unique_doctor_slot (doctor_id, appointment_date, appointment_time),
+
+  INDEX idx_doctor_date (doctor_id, appointment_date),
+
+  INDEX idx_patient (patient_id),
+
+  INDEX idx_status (status)
+
+);
+
+
+
+Table 4: consultations
+
+CREATE TABLE consultations (
+
+  id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+
+  appointment_id VARCHAR(36) UNIQUE NOT NULL REFERENCES appointments(id),
+
+  patient_id VARCHAR(36) NOT NULL REFERENCES patients(id),
+
+  doctor_id VARCHAR(36) NOT NULL REFERENCES users(id),
+
+  
+
+  -- Vitals
+
+  blood_pressure_systolic INT,
+
+  blood_pressure_diastolic INT,
+
+  temperature DECIMAL(4,2),
+
+  pulse_rate INT,
+
+  respiratory_rate INT,
+
+  weight DECIMAL(5,2),
+
+  height DECIMAL(5,2),
+
+  bmi DECIMAL(4,2),
+
+  spo2 DECIMAL(4,2),
+
+  
+
+  -- Clinical Notes
+
+  symptoms TEXT,
+
+  diagnosis TEXT,
+
+  notes TEXT,
+
+  follow_up_date DATE,
+
+  follow_up_notes TEXT,
+
+  
+
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  INDEX idx_patient (patient_id),
+
+  INDEX idx_doctor (doctor_id),
+
+  INDEX idx_date (created_at)
+
+);
+
+Table 5: prescriptions
+
+CREATE TABLE prescriptions
+
+id: VARCHAR(36) PRIMARY KEY DEFAULT (UUID())
+
+consultation_id: VARCHAR(36) NOT NULL REFERENCES consultations(id) ON DELETE CASCADE
+
+drug_name: VARCHAR(200) NOT NULL
+
+dosage: VARCHAR(100) NOT NULL (e.g., "500mg")
+
+frequency: VARCHAR(100) NOT NULL (e.g., "Twice daily")
+
+duration: VARCHAR(100) NOT NULL (e.g., "5 days")
+
+instructions: TEXT
+
+status: ENUM('pending', 'dispensed', 'cancelled') DEFAULT 'pending'
+
+dispensed_at: TIMESTAMP NULL
+
+dispensed_by: VARCHAR(36) REFERENCES users(id)
+
+created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+Indexes:
+
+idx_consultation(consultation_id)
+
+idx_status(status)
+
+Table 6: lab_requests
+
+CREATE TABLE lab_requests
+
+id: VARCHAR(36) PRIMARY KEY DEFAULT (UUID())
+
+consultation_id: VARCHAR(36) NOT NULL REFERENCES consultations(id) ON DELETE CASCADE
+
+test_name: VARCHAR(200) NOT NULL
+
+test_type: ENUM('blood', 'urine', 'imaging', 'other') DEFAULT 'blood'
+
+instructions: TEXT
+
+status: ENUM('requested', 'sample_collected', 'processing', 'completed', 'cancelled') DEFAULT 'requested'
+
+result: TEXT
+
+result_unit: VARCHAR(50)
+
+normal_range: VARCHAR(100)
+
+completed_at: TIMESTAMP NULL
+
+completed_by: VARCHAR(36) REFERENCES users(id)
+
+created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+updated_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+
+Indexes:
+
+idx_consultation(consultation_id)
+
+idx_status(status)
+
+Table 7: pharmacy_inventory
+
+CREATE TABLE pharmacy_inventory
+
+id: VARCHAR(36) PRIMARY KEY DEFAULT (UUID())
+
+drug_name: VARCHAR(200) NOT NULL
+
+generic_name: VARCHAR(200)
+
+category: VARCHAR(100)
+
+quantity: INT NOT NULL DEFAULT 0
+
+unit: VARCHAR(50) NOT NULL (e.g., "tablets", "bottles", "tubes")
+
+unit_price: DECIMAL(10,2) NOT NULL
+
+reorder_level: INT DEFAULT 10
+
+created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+updated_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+
+Indexes:
+
+idx_drug_name(drug_name)
+
+idx_category(category)
+
+Table 8: bills
+
+CREATE TABLE bills
+
+id: VARCHAR(36) PRIMARY KEY DEFAULT (UUID())
+
+bill_number: VARCHAR(50) UNIQUE NOT NULL (Format: BILL-YYYYMMDD-001)
+
+patient_id: VARCHAR(36) NOT NULL REFERENCES patients(id)
+
+consultation_id: VARCHAR(36) REFERENCES consultations(id)
+
+Amounts:
+
+consultation_fee: DECIMAL(10,2) DEFAULT 0
+
+pharmacy_total: DECIMAL(10,2) DEFAULT 0
+
+lab_total: DECIMAL(10,2) DEFAULT 0
+
+other_charges: DECIMAL(10,2) DEFAULT 0
+
+discount: DECIMAL(10,2) DEFAULT 0
+
+tax: DECIMAL(10,2) DEFAULT 0
+
+total_amount: DECIMAL(10,2) NOT NULL
+
+paid_amount: DECIMAL(10,2) DEFAULT 0
+
+balance: DECIMAL(10,2) NOT NULL
+
+
+
+Payment:
+
+payment_method: ENUM('cash', 'card', 'mobile_money', 'insurance') DEFAULT 'cash'
+
+payment_status: ENUM('pending', 'partial', 'paid') DEFAULT 'pending'
+
+insurance_provider: VARCHAR(100)
+
+insurance_claim_number: VARCHAR(100)
+
+created_by: VARCHAR(36) REFERENCES users(id)
+
+created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+updated_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+
+Indexes:
+
+idx_patient(patient_id)
+
+idx_bill_number(bill_number)
+
+idx_payment_status(payment_status)
+
+Table 9: bill_items
+
+CREATE TABLE bill_items
+
+id: VARCHAR(36) PRIMARY KEY DEFAULT (UUID())
+
+bill_id: VARCHAR(36) NOT NULL REFERENCES bills(id) ON DELETE CASCADE
+
+item_type: ENUM('consultation', 'pharmacy', 'lab', 'other') NOT NULL
+
+item_description: VARCHAR(200) NOT NULL
+
+quantity: INT DEFAULT 1
+
+unit_price: DECIMAL(10,2) NOT NULL
+
+total_price: DECIMAL(10,2) NOT NULL
+
+References (optional):
+
+prescription_id: VARCHAR(36) REFERENCES prescriptions(id)
+
+lab_request_id: VARCHAR(36) REFERENCES lab_requests(id)
+
+created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+Indexes:
+
+idx_bill(bill_id)
+
+
+
+
+
+2.2 Database Relationships
+
+users
+
+  ├── appointments (doctor_id)
+
+  ├── appointments (created_by)
+
+  ├── consultations (doctor_id)
+
+  ├── prescriptions (dispensed_by)
+
+  ├── lab_requests (completed_by)
+
+  └── bills (created_by)
+
+
+
+patients
+
+  ├── appointments (patient_id)
+
+  ├── consultations (patient_id)
+
+  └── bills (patient_id)
+
+
+
+appointments
+
+  └── consultations (appointment_id) [1:1]
+
+
+
+consultations
+
+  ├── prescriptions (consultation_id)
+
+  ├── lab_requests (consultation_id)
+
+  └── bills (consultation_id)
+
+
+
+prescriptions
+
+  ├── bill_items (prescription_id)
+
+  └── pharmacy_inventory (drug_name reference)
+
+
+
+lab_requests
+
+  └── bill_items (lab_request_id)
+
+
+
+bills
+
+  └── bill_items (bill_id)
+
+```
+
+
+
+API DESIGN
+
+Authentication Endpoints
+
+POST /api/auth/login
+
+Request:
+
+{ email: string, password: string }
+
+Response:
+
+{ token: string, user: { id, email, role, full_name } }
+
+POST /api/auth/register
+
+Request:
+
+{ email, password, full_name, role, phone?, specialization? }
+
+Response:
+
+{ message: "User created", user: {...} }
+
+GET /api/auth/me
+
+Headers:
+
+Authorization: Bearer {token}
+
+Response:
+
+{ user: {...} }
+
+Patient Endpoints
+
+POST /api/patients
+
+Request:
+
+{ full_name, phone, email?, date_of_birth?, gender?, address?, emergency_contact? }
+
+Response:
+
+{ patient: {...}, message: "Patient registered" }
+
+GET /api/patients
+
+Query:
+
+?search=name&page=1&limit=20
+
+Response:
+
+{ patients: [...], total: number, page: number }
+
+GET /api/patients/{id}
+
+Response:
+
+{ patient: {...} }
+
+PUT /api/patients/{id}
+
+Request:
+
+{ ...fields to update }
+
+Response:
+
+{ patient: {...} }
+
+GET /api/patients/search
+
+Query:
+
+?phone=... or ?name=...
+
+Response:
+
+{ patients: [...] }
+
+3.3 Appointment Endpoints
+
+POST /api/appointments
+
+Request:
+
+patient_id
+
+doctor_id
+
+appointment_date
+
+appointment_time
+
+type
+
+reason?
+
+Response:
+
+{ appointment: {...} }
+
+GET /api/appointments
+
+Query:
+
+?date=2024-01-15&doctor_id=...&status=...
+
+Response:
+
+{ appointments: [...], total: number }
+
+GET /api/appointments/today
+
+Response:
+
+{ appointments: [...] }
+
+PUT /api/appointments/{id}/status
+
+Request:
+
+{ status: 'checked_in' | 'completed' | 'cancelled' }
+
+Response:
+
+{ appointment: {...} }
+
+GET /api/appointments/available-slots
+
+Query:
+
+?doctor_id=...&date=...
+
+Response:
+
+{ slots: ['09:00', '09:30', ...] }
+
+3.4 Consultation Endpoints
+
+POST /api/consultations
+
+Request:
+
+appointment_id
+
+vitals: { bp_systolic, bp_diastolic, temperature, ... }
+
+symptoms
+
+diagnosis
+
+prescriptions: [{ drug_name, dosage, frequency, duration }]
+
+lab_requests: [{ test_name, test_type, instructions }]
+
+Response:
+
+{ consultation: {...}, prescriptions: [...], lab_requests: [...], bill: {...} }
+
+GET /api/consultations/patient/{patient_id}
+
+Response:
+
+{ consultations: [...] }
+
+GET /api/consultations/{id}
+
+Response:
+
+{ consultation: {...}, prescriptions: [...], lab_requests: [...] }
+
+
+
+```
+
+3.5 Pharmacy Endpoints
+
+GET /api/pharmacy/prescriptions/pending
+
+Response:
+
+{ prescriptions: [...] }
+
+PUT /api/pharmacy/prescriptions/{id}/dispense
+
+Request:
+
+{ inventory_id, quantity }
+
+Response:
+
+{ prescription: {...}, inventory_updated: true }
+
+GET /api/pharmacy/inventory
+
+Response:
+
+{ inventory: [...] }
+
+POST /api/pharmacy/inventory
+
+Request:
+
+{ drug_name, quantity, unit, unit_price }
+
+Response:
+
+{ item: {...} }
+
+PUT /api/pharmacy/inventory/{id}
+
+Request:
+
+{ quantity, unit_price? }
+
+Response:
+
+{ item: {...} }
+
+GET /api/pharmacy/inventory/low-stock
+
+Response:
+
+{ items: [...] }
+
+3.6 Laboratory Endpoints
+
+GET /api/lab/requests/pending
+
+Response:
+
+{ requests: [...] }
+
+PUT /api/lab/requests/{id}/complete
+
+Request:
+
+{ result, result_unit?, normal_range? }
+
+Response:
+
+{ request: {...} }
+
+GET /api/lab/requests/patient/{patient_id}
+
+Response:
+
+{ requests: [...] }
+
+Billing Endpoints
+
+POST /api/bills/generate
+
+Request:
+
+{ consultation_id }
+
+Response:
+
+{ bill: {...}, items: [...] }
+
+GET /api/bills/patient/{patient_id}
+
+Response:
+
+{ bills: [...] }
+
+POST /api/bills/{id}/payment
+
+Request:
+
+{ amount, payment_method, insurance_provider? }
+
+Response:
+
+{ bill: {...}, payment_receipt: {...} }
+
+GET /api/bills/today
+
+Response:
+
+{ bills: [...], total_collection: number }
+
+
+
+
+
+4. FRONTEND COMPONENT ARCHITECTURE
+
+
+
+4.1 Component Structure
+
+
+
+src/
+
+├── components/
+
+│   ├── common/
+
+│   │   ├── Layout.jsx          # Main layout with sidebar
+
+│   │   ├── Header.jsx          # Top header with user info
+
+│   │   ├── Sidebar.jsx         # Navigation sidebar
+
+│   │   ├── SearchBar.jsx       # Reusable search
+
+│   │   ├── DataTable.jsx       # Reusable table
+
+│   │   └── FormInput.jsx       # Reusable form inputs
+
+│   │
+
+│   ├── patients/
+
+│   │   ├── PatientForm.jsx     # Add/edit patient
+
+│   │   ├── PatientList.jsx     # List patients
+
+│   │   └── PatientCard.jsx     # Patient summary card
+
+│   │
+
+│   ├── appointments/
+
+│   │   ├── AppointmentForm.jsx # Book appointment
+
+│   │   ├── CalendarView.jsx    # Doctor schedule
+
+│   │   └── TodayAppointments.jsx
+
+│   │
+
+│   ├── consultation/
+
+│   │   ├── ConsultationForm.jsx
+
+│   │   ├── VitalsForm.jsx
+
+│   │   ├── PrescriptionForm.jsx
+
+│   │   └── LabRequestForm.jsx
+
+│   │
+
+│   ├── pharmacy/
+
+│   │   ├── PendingPrescriptions.jsx
+
+│   │   ├── InventoryList.jsx
+
+│   │   └── DispenseForm.jsx
+
+│   │
+
+│   ├── laboratory/
+
+│   │   ├── LabRequests.jsx
+
+│   │   └── ResultEntryForm.jsx
+
+│   │
+
+│   └── billing/
+
+│       ├── BillGenerator.jsx
+
+│       ├── PaymentForm.jsx
+
+│       └── Receipt.jsx
+
+│
+
+├── pages/
+
+│   ├── Login.jsx
+
+│   ├── Dashboard.jsx           # Role-based dashboard
+
+│   ├── Patients.jsx
+
+│   ├── Appointments.jsx
+
+│   ├── Consultation.jsx
+
+│   ├── Pharmacy.jsx
+
+│   ├── Laboratory.jsx
+
+│   └── Billing.jsx
+
+│
+
+├── context/
+
+│   ├── AuthContext.jsx         # Authentication state
+
+│   ├── PatientContext.jsx      # Patient data
+
+│   └── AppointmentContext.jsx  # Appointment data
+
+│
+
+├── services/
+
+│   ├── api.js                  # Axios instance
+
+│   ├── auth.js                 # Auth API calls
+
+│   ├── patients.js
+
+│   ├── appointments.js
+
+│   └── ...
+
+│
+
+├── utils/
+
+│   ├── validators.js           # Form validation
+
+│   ├── helpers.js              # Formatting functions
+
+│   └── constants.js            # Role constants, statuses
+
+│
+
+└── App.jsx
+
+```
+
+
+
+4.2 Page Routes
+
+
+
+// App.jsx
+
+const App = () => {
+
+  return (
+
+    <Router>
+
+      <Routes>
+
+        <Route path="/login" element={<Login />} />
+
+        
+
+        <Route path="/" element={<PrivateRoute />}>
+
+          {/* Common routes */}
+
+          <Route path="/dashboard" element={<Dashboard />} />
+
+          <Route path="/patients" element={<Patients />} />
+
+          <Route path="/patients/:id" element={<PatientDetail />} />
+
+          
+
+          {/* Role-based routes */}
+
+          <Route path="/appointments" element={
+
+            <RoleRoute allowed={['receptionist', 'doctor', 'admin']}>
+
+              <Appointments />
+
+            </RoleRoute>
+
+          } />
+
+          
+
+          <Route path="/consultation/:appointmentId" element={
+
+            <RoleRoute allowed={['doctor', 'admin']}>
+
+              <Consultation />
+
+            </RoleRoute>
+
+          } />
+
+          
+
+          <Route path="/pharmacy" element={
+
+            <RoleRoute allowed={['pharmacist', 'admin']}>
+
+              <Pharmacy />
+
+            </RoleRoute>
+
+          } />
+
+          
+
+          <Route path="/lab" element={
+
+            <RoleRoute allowed={['lab_technician', 'admin']}>
+
+              <Laboratory />
+
+            </RoleRoute>
+
+          } />
+
+          
+
+          <Route path="/billing" element={
+
+            <RoleRoute allowed={['cashier', 'receptionist', 'admin']}>
+
+              <Billing />
+
+            </RoleRoute>
+
+          } />
+
+        </Route>
+
+      </Routes>
+
+    </Router>
+
+  );
+
+};
+
+```
+
+
+
+4.3 Role-Based UI Components
+
+// Dashboard.jsx - Role-specific
+
+const Dashboard = () => {
+
+  const { user } = useAuth();
+
+  
+
+  if (user.role === 'receptionist') {
+
+    return <ReceptionistDashboard />;
+
+  } else if (user.role === 'doctor') {
+
+    return <DoctorDashboard />;
+
+  } else if (user.role === 'pharmacist') {
+
+    return <PharmacistDashboard />;
+
+  } else if (user.role === 'lab_technician') {
+
+    return <LabDashboard />;
+
+  } else {
+
+    return <AdminDashboard />;
+
+  }
+
+};
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+5. WORKFLOW DESIGN
+
+5.1 Complete Patient Journey
+
+RECEPTIONIST:
+
+Search for patient
+
+If not found, register new patient
+
+Book appointment with doctor
+
+Patient added to doctor's queue
+
+DOCTOR:
+
+View today's appointments
+
+Select patient
+
+Mark as "checked_in"
+
+Enter vitals
+
+Enter diagnosis
+
+Add prescriptions
+
+Add lab requests
+
+Save consultation
+
+Bill auto-generated
+
+Patient goes to pharmacy/lab
+
+PHARMACY:
+
+View pending prescriptions
+
+Select prescription
+
+Dispense drug
+
+Update inventory automatically
+
+Prescription marked as dispensed
+
+LABORATORY:
+
+View pending lab requests
+
+Enter test results
+
+Results sent to patient's record
+
+CASHIER:
+
+View pending bills
+
+Receive payment
+
+Update bill status
+
+Print receipt
+
+Patient journey complete
+
+
+
+5.2 State Management Flow
+
+// Example: Consultation state flow
+
+const ConsultationForm = () => {
+
+  // Local state
+
+  const [vitals, setVitals] = useState({});
+
+  const [diagnosis, setDiagnosis] = useState('');
+
+  const [prescriptions, setPrescriptions] = useState([]);
+
+  const [labRequests, setLabRequests] = useState([]);
+
+  
+
+  // On save
+
+  const handleSave = async () => {
+
+    const consultationData = {
+
+      appointment_id,
+
+      vitals,
+
+      symptoms: diagnosis,
+
+      diagnosis,
+
+      prescriptions,
+
+      lab_requests: labRequests
+
+    };
+
+    
+
+    // API call
+
+    const result = await createConsultation(consultationData);
+
+    
+
+    // Auto-navigate based on result
+
+    if (result.bill) {
+
+      navigate(`/billing/${result.bill.id}`);
+
+    } else {
+
+      navigate('/doctor/dashboard');
+
+    }
+
+  };
+
+};
+
+
+
+6. SECURITY DESIGN
+
+
+
+6.1 Authentication Flow
+
+// JWT Implementation
+
+const generateToken = (user) => {
+
+  return jwt.sign(
+
+    {
+
+      id: user.id,
+
+      email: user.email,
+
+      role: user.role
+
+    },
+
+    process.env.JWT_SECRET,
+
+    { expiresIn: '8h' }
+
+  );
+
+};
+
+
+
+// Middleware
+
+const authenticate = (req, res, next) => {
+
+  const token = req.header('Authorization')?.replace('Bearer ', '');
+
+  
+
+  if (!token) {
+
+    return res.status(401).json({ error: 'Access denied' });
+
+  }
+
+  
+
+  try {
+
+    const verified = jwt.verify(token, process.env.JWT_SECRET);
+
+    req.user = verified;
+
+    next();
+
+  } catch (error) {
+
+    res.status(400).json({ error: 'Invalid token' });
+
+  }
+
+};
+
+
+
+// Role-based middleware
+
+const authorize = (...roles) => {
+
+  return (req, res, next) => {
+
+    if (!roles.includes(req.user.role)) {
+
+      return res.status(403).json({ error: 'Access forbidden' });
+
+    }
+
+    next();
+
+  };
+
+};
+
+```
+
+
+
+6.2 Password Security
+
+// Hash password
+
+const hashPassword = async (password) => {
+
+  const salt = await bcrypt.genSalt(10);
+
+  return await bcrypt.hash(password, salt);
+
+};
+
+
+
+// Verify password
+
+const verifyPassword = async (password, hash) => {
+
+  return await bcrypt.compare(password, hash);
+
+};
+
+```
+
+7. ERROR HANDLING DESIGN
+
+
+
+### **7.1 Backend Error Responses**
+
+```javascript
+
+// Error middleware
+
+app.use((err, req, res, next) => {
+
+  console.error(err.stack);
+
+  
+
+  // Validation errors
+
+  if (err.name === 'ValidationError') {
+
+    return res.status(400).json({
+
+      error: 'Validation Error',
+
+      details: err.details
+
+    });
+
+  }
+
+  
+
+  // JWT errors
+
+  if (err.name === 'JsonWebTokenError') {
+
+    return res.status(401).json({
+
+      error: 'Invalid token'
+
+    });
+
+  }
+
+  
+
+  // Database errors
+
+  if (err.code === 'ER_DUP_ENTRY') {
+
+    return res.status(409).json({
+
+      error: 'Duplicate entry',
+
+      field: err.sqlMessage.match(/'(.+?)'/)[1]
+
+    });
+
+  }
+
+  
+
+  // Default
+
+  res.status(500).json({
+
+    error: 'Internal server error',
+
+    message: process.env.NODE_ENV === 'development' ? err.message : undefined
+
+  });
+
+});
+
+```
+
+
+
+### **7.2 Frontend Error Handling**
+
+```javascript
+
+// API service with error handling
+
+const api = axios.create({
+
+  baseURL: process.env.REACT_APP_API_URL,
+
+  timeout: 10000,
+
+});
+
+
+
+api.interceptors.response.use(
+
+  (response) => response,
+
+  (error) => {
+
+    if (error.response?.status === 401) {
+
+      // Clear token and redirect to login
+
+      localStorage.removeItem('token');
+
+      window.location.href = '/login';
+
+    }
+
+    
+
+    const message = error.response?.data?.error || 
+
+                    error.message || 
+
+                    'Network error';
+
+    
+
+    // Show toast notification
+
+    showToast(message, 'error');
+
+    
+
+    return Promise.reject(error);
+
+  }
+
+);
+
+```
+
+
+
+8. DEPLOYMENT CONFIGURATION
+
+8.1 Environment Variables
+
+# Backend (.env)
+
+NODE_ENV=development
+
+PORT=5000
+
+DATABASE_URL=mysql://user:pass@localhost:3306/hospital_db
+
+JWT_SECRET=your-super-secret-jwt-key-here
+
+FRONTEND_URL=http://localhost:3000
+
+
+
+# Frontend (.env)
+
+REACT_APP_API_URL=http://localhost:5000/api
+
+REACT_APP_ENV=development
+
+```
+
+
+
+8.2 Deployment Scripts (package.json)
+
+{
+
+  "scripts": {
+
+    "dev:backend": "nodemon server.js",
+
+    "dev:frontend": "react-scripts start",
+
+    "build:frontend": "react-scripts build",
+
+    "db:migrate": "npx prisma migrate dev",
+
+    "db:seed": "node scripts/seed.js",
+
+    "deploy:backend": "railway up",
+
+    "deploy:frontend": "vercel --prod"
+
+  }
+
+}
+
+```
+
+9. DEVELOPMENT WORKFLOW FOR 4 DEVELOPERS
+
+9.1 Day-by-Day Task Allocation
+
+Day 1: Foundation (Monday)
+
+Developer 1 (Backend Lead):
+
+Set up Express server
+
+Configure Prisma with MySQL
+
+Create database schema
+
+Set up authentication endpoints
+
+Developer 2 (Frontend Lead):
+
+Create React app with Vite
+
+Set up Tailwind CSS
+
+Create layout components (Header, Sidebar)
+
+Set up routing
+
+Developer 3 (Full Stack):
+
+Create user management API
+
+Create patient API endpoints
+
+Build patient registration form
+
+Build patient search component
+
+Developer 4 (Full Stack):
+
+Create appointment API
+
+Build appointment booking form
+
+Create doctor schedule view
+
+Set up common UI components
+
+Day 2: Core Features (Tuesday)
+
+Developer 1:
+
+Create consultation API
+
+Set up vitals, diagnosis, prescription models
+
+Create pharmacy inventory API
+
+Developer 2:
+
+Build consultation form UI
+
+Create prescription form component
+
+Build lab request form
+
+Developer 3:
+
+Create pharmacy endpoints
+
+Build pharmacy dashboard
+
+Create inventory management UI
+
+Developer 4:
+
+Create lab endpoints
+
+Build lab dashboard
+
+Create result entry form
+
+Day 3: Integration Day (Wednesday)
+
+ALL DEVELOPERS:
+
+Integration testing session (9am-12pm)
+
+Fix cross-module integration issues
+
+Ensure data flows between modules
+
+Developer 1 & 3:
+
+Create billing API
+
+Auto-bill generation from consultation
+
+Developer 2 & 4:
+
+Build billing UI
+
+Create payment form
+
+Add receipt generation
+
+```
+
+Day 4: Polish Day (Thursday)
+
+Developer 1:
+
+Add search functionality across modules
+
+Implement error handling
+
+Add input validation
+
+Developer 2:
+
+Improve UI/UX
+
+Add loading states
+
+Add success/error notifications
+
+Developer 3:
+
+Create dashboards for each role
+
+Add statistics widgets
+
+Implement responsive design
+
+Developer 4:
+
+Add data export (PDF receipts)
+
+Implement form validations
+
+Add confirmation dialogs
+
+Day 5: Testing & Deployment (Friday)
+
+Morning (9am-12pm):
+
+End-to-end testing
+
+Load testing with sample data
+
+Bug fixing session
+
+Afternoon (1pm-4pm):
+
+Prepare production build
+
+Database migration scripts
+
+Deployment configuration
+
+Evening (4pm-6pm):
+
+Deploy to staging
+
+Final testing
+
+Documentation
+
+
+
+
+
+
+
+## **10. TESTING STRATEGY**
+
+
+
+### **10.1 Manual Test Scenarios**
+
+Test Case 1: Patient Registration
+
+  Steps:
+
+    1. Navigate to patients page
+
+    2. Click "Add New Patient"
+
+    3. Fill form with required data
+
+    4. Submit form
+
+  Expected:
+
+    • Patient appears in list
+
+    • Unique patient ID generated
+
+
+
+Test Case 2: Complete Consultation Flow
+
+  Steps:
+
+    1. Book appointment for patient
+
+    2. Doctor logs in, selects patient
+
+    3. Enter vitals, diagnosis
+
+    4. Add prescription and lab request
+
+    5. Save consultation
+
+  Expected:
+
+    • Bill auto-generated
+
+    • Prescription appears in pharmacy
+
+    • Lab request appears in lab
+
+```
+
+
+
+### **10.2 Post-Implementation Checklist**
+
+[ ] All forms submit without errors
+
+[ ] Data persists after page refresh
+
+[ ] Role-based access working
+
+[ ] Patient search functional
+
+[ ] Appointment booking works
+
+[ ] Consultation saves with all data
+
+[ ] Pharmacy can dispense prescriptions
+
+[ ] Lab can enter results
+
+[ ] Billing generates correct amounts
+
+[ ] Receipt prints correctly
+
+[ ] Mobile responsive
+
+[ ] No console errors
+
+10. TESTING STRATEGY
+
+10.1 Manual Test Scenarios
+
+Test Case 1: Patient Registration
+
+Steps:
+
+Navigate to patients page
+
+Click "Add New Patient"
+
+Fill form with required data
+
+Submit form
+
+Expected:
+
+Patient appears in list
+
+Unique patient ID generated
+
+Test Case 2: Complete Consultation Flow
+
+Steps:
+
+Book appointment for patient
+
+Doctor logs in, selects patient
+
+Enter vitals, diagnosis
+
+Add prescription and lab request
+
+Save consultation
+
+Expected:
+
+Bill auto-generated
+
+Prescription appears in pharmacy
+
+Lab request appears in lab
+
+10.2 Post-Implementation Checklist
+
+All forms submit without errors
+
+Data persists after page refresh
+
+Role-based access working
+
+Patient search functional
+
+Appointment booking works
+
+Consultation saves with all data
+
+Pharmacy can dispense prescriptions
+
+Lab can enter results
+
+Billing generates correct amounts
+
+Receipt prints correctly
+
+Mobile responsive
+
+No console errors

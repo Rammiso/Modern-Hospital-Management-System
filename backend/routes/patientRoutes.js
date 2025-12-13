@@ -20,4 +20,7 @@ router
   .put(patientController.updatePatient)
   .delete(patientController.deletePatient);
 
+// Get patient medical history
+router.get("/:id/medical-history", patientController.getPatientMedicalHistory);
+
 module.exports = router;

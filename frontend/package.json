@@ -1,0 +1,59 @@
+{
+  "name": "modern-hospital-management-system-frontend",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Modern Hospital Management System - Frontend",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
+    "test": "vitest --run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Rammiso/Modern-Hospital-Management-System.git"
+  },
+  "keywords": [
+    "hospital",
+    "management",
+    "frontend",
+    "react"
+  ],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Rammiso/Modern-Hospital-Management-System/issues"
+  },
+  "homepage": "https://github.com/Rammiso/Modern-Hospital-Management-System#readme",
+  "dependencies": {
+    "axios": "^1.6.2",
+    "framer-motion": "^12.23.26",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.20.0"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/react": "^18.2.43",
+    "@types/react-dom": "^18.2.17",
+    "@vitejs/plugin-react": "^4.2.1",
+    "@vitest/ui": "^4.0.15",
+    "autoprefixer": "^10.4.22",
+    "eslint": "^8.55.0",
+    "eslint-plugin-react": "^7.33.2",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.5",
+    "fast-check": "^4.4.0",
+    "jsdom": "^27.3.0",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.18",
+    "vite": "^5.0.8",
+    "vitest": "^4.0.15"
+  }
+}

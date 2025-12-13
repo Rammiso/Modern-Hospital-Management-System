@@ -4,18 +4,24 @@
 //   createAppointment,
 //   getAppointment,
 //   listAppointments,
+//   getAvailableSlots,
 // } = require("../controllers/appointmentController");
 // const verifyToken = require("../middleware/auth");
 
 // router.post("/", verifyToken, createAppointment);
+// router.get("/available-slots", verifyToken, getAvailableSlots);
 // router.get("/:id", verifyToken, getAppointment);
 // router.get("/", verifyToken, listAppointments);
 
 // module.exports = router;
+
 const express = require("express");
 const router = express.Router();
 const controller = require("../controllers/appointmentController");
 const verifyToken = require("../middleware/auth");
+
+// GET Available Slots (must be before /:id route)
+router.get("/available-slots", verifyToken, controller.getAvailableSlots);
 
 // CREATE Appointment
 router.post("/", verifyToken, controller.createAppointment);
@@ -23,14 +29,10 @@ router.post("/", verifyToken, controller.createAppointment);
 // LIST Appointments
 router.get("/", verifyToken, controller.listAppointments);
 
-// GET Single Appointment
+// GET or CREATE Consultation for Appointment (NEW - for workflow)
+router.get("/:id/consultation-or-create", verifyToken, controller.getOrCreateConsultation);
+
+// GET Single Appointment (must be last to avoid conflicts)
 router.get("/:id", verifyToken, controller.getAppointment);
 
-// UPDATE Appointment
-router.put("/:id", verifyToken, controller.updateAppointment);
-
-// DELETE Appointment
-router.delete("/:id", verifyToken, controller.deleteAppointment);
-
 module.exports = router;
-
