@@ -37,9 +37,10 @@ build/
 *.docx
 *.txt
 
-# Markdown files (except README.md)
-*.md
+# Markdown files in root directory (except README.md)
+/*.md
 !README.md
 
 # Kiro AI files
 .kiro/
+remove_md_files_from_git.ps1
