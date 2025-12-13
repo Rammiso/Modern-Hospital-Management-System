@@ -203,6 +203,10 @@ const LabRequest = {
   // Search lab requests with filters
   search: async (filters = {}, limit = 20, offset = 0) => {
     try {
+      // Ensure limit and offset are integers
+      limit = parseInt(limit) || 20;
+      offset = parseInt(offset) || 0;
+
       let query = `SELECT lr.*, 
                           c.patient_id,
                           p.full_name as patient_name,
@@ -250,8 +254,9 @@ const LabRequest = {
       const total = countResult[0].total;
 
       // Add pagination and ordering
-      query += " ORDER BY lr.created_at DESC LIMIT ? OFFSET ?";
-      params.push(limit, offset);
+      // Use string interpolation for LIMIT and OFFSET since they're already validated integers
+      // This avoids prepared statement issues with numeric parameters
+      query += ` ORDER BY lr.created_at DESC LIMIT ${limit} OFFSET ${offset}`;
 
       const labRequests = await db.query(query, params);
 

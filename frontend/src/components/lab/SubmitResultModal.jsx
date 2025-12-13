@@ -1,13 +1,18 @@
 import React, { useState } from "react";
+import { updateLabRequestStatus } from "../../services/labService";
+import { useAuth } from "../../context/AuthContext";
 
-const SubmitResultModal = ({ isOpen, onClose, test, requestId, onSubmit }) => {
+const SubmitResultModal = ({ isOpen, onClose, labRequest, onSubmit }) => {
+  const { user } = useAuth();
   const [resultValue, setResultValue] = useState("");
-  const [referenceRange, setReferenceRange] = useState("");
+  const [resultUnit, setResultUnit] = useState("");
+  const [normalRange, setNormalRange] = useState("");
   const [notes, setNotes] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  if (!isOpen || !test) return null;
+  if (!isOpen || !labRequest) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (!resultValue.trim()) {
@@ -15,24 +20,38 @@ const SubmitResultModal = ({ isOpen, onClose, test, requestId, onSubmit }) => {
       return;
     }
 
-    const resultData = {
-      value: resultValue,
-      referenceRange: referenceRange || undefined,
-      notes: notes || undefined,
-      submittedAt: new Date().toISOString(),
-    };
+    setSubmitting(true);
 
-    onSubmit(requestId, test.code, resultData);
-    
-    // Reset form
-    setResultValue("");
-    setReferenceRange("");
-    setNotes("");
+    try {
+      const resultData = {
+        status: "completed",
+        result: resultValue,
+        result_unit: resultUnit || null,
+        normal_range: normalRange || null,
+        completed_by: user?.id,
+      };
+
+      const response = await updateLabRequestStatus(labRequest.id, resultData);
+      
+      if (response.success) {
+        alert("Results submitted successfully!");
+        onSubmit();
+        handleClose();
+      } else {
+        alert("Failed to submit results: " + (response.error || "Unknown error"));
+      }
+    } catch (error) {
+      console.error("Error submitting results:", error);
+      alert("An error occurred while submitting results");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleClose = () => {
     setResultValue("");
-    setReferenceRange("");
+    setResultUnit("");
+    setNormalRange("");
     setNotes("");
     onClose();
   };
@@ -47,7 +66,7 @@ const SubmitResultModal = ({ isOpen, onClose, test, requestId, onSubmit }) => {
               Submit Test Results
             </h3>
             <p className="text-purple-300/70 text-sm mt-1">
-              {test.name} ({test.code})
+              {labRequest.test_name}
             </p>
           </div>
           <button
@@ -74,24 +93,23 @@ const SubmitResultModal = ({ isOpen, onClose, test, requestId, onSubmit }) => {
         <div className="mb-6 p-4 bg-purple-500/10 border border-purple-500/20 rounded-xl">
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <span className="text-purple-400">Panel:</span>
+              <span className="text-purple-400">Patient:</span>
               <span className="text-purple-100 ml-2 font-semibold">
-                {test.panel}
+                {labRequest.patient_name || "N/A"}
               </span>
             </div>
             <div>
-              <span className="text-purple-400">Sample Type:</span>
+              <span className="text-purple-400">Test Type:</span>
               <span className="text-purple-100 ml-2 font-semibold">
-                {test.sampleType}
+                {labRequest.test_type}
               </span>
             </div>
-            {test.urgency === "Urgent" && (
-              <div className="col-span-2">
-                <span className="px-3 py-1 bg-red-500/20 border border-red-400/50 rounded text-xs font-semibold text-red-300">
-                  ⚠️ URGENT TEST
-                </span>
-              </div>
-            )}
+            <div className="col-span-2">
+              <span className="text-purple-400">Request ID:</span>
+              <span className="text-purple-100 ml-2 font-mono text-xs">
+                {labRequest.id}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -112,31 +130,31 @@ const SubmitResultModal = ({ isOpen, onClose, test, requestId, onSubmit }) => {
             />
           </div>
 
-          {/* Reference Range */}
+          {/* Result Unit */}
           <div>
             <label className="block text-sm font-semibold text-purple-300 mb-2">
-              Reference Range (Optional)
+              Unit (Optional)
             </label>
             <input
               type="text"
-              value={referenceRange}
-              onChange={(e) => setReferenceRange(e.target.value)}
-              placeholder="e.g., 70-100 mg/dL"
+              value={resultUnit}
+              onChange={(e) => setResultUnit(e.target.value)}
+              placeholder="e.g., mg/dL, mmol/L, cells/μL"
               className="w-full px-4 py-3 bg-white/5 border border-purple-500/30 rounded-xl text-purple-100 placeholder-purple-400/50 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400 transition-all duration-300 backdrop-blur-sm"
             />
           </div>
 
-          {/* Technician Notes */}
+          {/* Normal Range */}
           <div>
             <label className="block text-sm font-semibold text-purple-300 mb-2">
-              Technician Notes (Optional)
+              Normal Range (Optional)
             </label>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Add any observations or notes about the test..."
-              rows={4}
-              className="w-full px-4 py-3 bg-white/5 border border-purple-500/30 rounded-xl text-purple-100 placeholder-purple-400/50 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400 transition-all duration-300 backdrop-blur-sm resize-none"
+            <input
+              type="text"
+              value={normalRange}
+              onChange={(e) => setNormalRange(e.target.value)}
+              placeholder="e.g., 70-100 mg/dL"
+              className="w-full px-4 py-3 bg-white/5 border border-purple-500/30 rounded-xl text-purple-100 placeholder-purple-400/50 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400 transition-all duration-300 backdrop-blur-sm"
             />
           </div>
 
@@ -144,29 +162,43 @@ const SubmitResultModal = ({ isOpen, onClose, test, requestId, onSubmit }) => {
           <div className="flex gap-3 pt-4">
             <button
               type="submit"
-              className="flex-1 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl font-semibold hover:from-green-600 hover:to-emerald-600 transition-all duration-300 shadow-lg hover:shadow-green-500/50 hover:scale-105"
+              disabled={submitting}
+              className="flex-1 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl font-semibold hover:from-green-600 hover:to-emerald-600 transition-all duration-300 shadow-lg hover:shadow-green-500/50 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <span className="flex items-center justify-center gap-2">
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-                Submit Results
+                {submitting ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Submitting...
+                  </>
+                ) : (
+                  <>
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                    Submit Results
+                  </>
+                )}
               </span>
             </button>
             <button
               type="button"
               onClick={handleClose}
-              className="px-6 py-3 bg-white/10 border border-purple-500/30 text-purple-100 rounded-xl font-semibold hover:bg-purple-500/20 transition-all duration-300"
+              disabled={submitting}
+              className="px-6 py-3 bg-white/10 border border-purple-500/30 text-purple-100 rounded-xl font-semibold hover:bg-purple-500/20 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancel
             </button>

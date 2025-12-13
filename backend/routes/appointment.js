@@ -18,7 +18,7 @@
 const express = require("express");
 const router = express.Router();
 const controller = require("../controllers/appointmentController");
-const verifyToken = require("../middleware/auth");
+const { verifyToken } = require("../middleware/auth");
 
 // GET Available Slots (must be before /:id route)
 router.get("/available-slots", verifyToken, controller.getAvailableSlots);

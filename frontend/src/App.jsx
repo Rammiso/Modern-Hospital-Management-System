@@ -13,10 +13,12 @@ import Patients from "./pages/Patients";
 import PatientDashboard from "./pages/PatientDashboard";
 import Appointments from "./pages/Appointments";
 import Consultation from "./pages/Consultation";
+import ConsultationsList from "./pages/ConsultationsList";
 import Pharmacy from "./pages/Pharmacy";
 import PharmacyDashboard from "./pages/PharmacyDashboard";
 import Laboratory from "./pages/Laboratory";
 import LabDashboard from "./pages/LabDashboard";
+import LabRequests from "./pages/LabRequests";
 import Billing from "./pages/Billing";
 import BillingDashboard from "./pages/BillingDashboard";
 import ReceptionistBooking from "./pages/ReceptionistBooking";
@@ -141,7 +143,7 @@ function App() {
               }
             />
 
-            {/* Consultation - Doctor, Nurse, Admin */}
+            {/* Consultations List - Doctor, Nurse, Admin */}
             <Route
               path="/consultation"
               element={
@@ -152,10 +154,12 @@ function App() {
                     USER_ROLES.ADMIN,
                   ]}
                 >
-                  <Consultation />
+                  <ConsultationsList />
                 </RoleRoute>
               }
             />
+            
+            {/* Single Consultation - Doctor, Nurse, Admin */}
             <Route
               path="/consultation/:appointmentId"
               element={
@@ -203,6 +207,18 @@ function App() {
                   allowedRoles={[USER_ROLES.LAB_TECHNICIAN, USER_ROLES.ADMIN]}
                 >
                   <LabDashboard />
+                </RoleRoute>
+              }
+            />
+
+            {/* Lab Requests - Lab Technician, Admin */}
+            <Route
+              path="/lab-requests"
+              element={
+                <RoleRoute
+                  allowedRoles={[USER_ROLES.LAB_TECHNICIAN, USER_ROLES.ADMIN]}
+                >
+                  <LabRequests />
                 </RoleRoute>
               }
             />

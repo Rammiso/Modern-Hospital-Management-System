@@ -43,3 +43,42 @@ exports.protect = async (req, res, next) => {
     return res.status(401).json({ message: "Invalid token" });
   }
 };
+
+/**
+ * Authorize user based on roles
+ * @param {...string} allowedRoles - Roles that are allowed to access the route
+ */
+exports.authorize = (...allowedRoles) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ 
+        success: false,
+        message: "Authentication required" 
+      });
+    }
+
+    // Get user role (handle different possible property names)
+    const userRole = req.user.role || req.user.role_name || req.user.roleName;
+    
+    if (!userRole) {
+      return res.status(403).json({ 
+        success: false,
+        message: "User role not found" 
+      });
+    }
+
+    // Check if user's role is in the allowed roles (case-insensitive)
+    const hasPermission = allowedRoles.some(
+      role => role.toLowerCase() === userRole.toLowerCase()
+    );
+
+    if (!hasPermission) {
+      return res.status(403).json({ 
+        success: false,
+        message: `Access denied. Required role: ${allowedRoles.join(' or ')}` 
+      });
+    }
+
+    next();
+  };
+};

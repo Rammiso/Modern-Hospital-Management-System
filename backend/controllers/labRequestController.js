@@ -1,5 +1,40 @@
 const LabRequest = require("../models/labRequestModel");
 
+// Get all lab requests with filters
+const getAllLabRequests = async (req, res) => {
+  try {
+    const { status, test_type, start_date, end_date, limit, offset } = req.query;
+    
+    const filters = {};
+    if (status) filters.status = status;
+    if (test_type) filters.test_type = test_type;
+    if (start_date) filters.start_date = start_date;
+    if (end_date) filters.end_date = end_date;
+
+    // Parse limit and offset with defaults
+    const parsedLimit = limit ? parseInt(limit) : 50;
+    const parsedOffset = offset ? parseInt(offset) : 0;
+
+    const result = await LabRequest.search(filters, parsedLimit, parsedOffset);
+    
+    res.json({
+      success: true,
+      data: result.labRequests,
+      total: result.total,
+      limit: result.limit,
+      offset: result.offset,
+      pages: result.pages
+    });
+  } catch (err) {
+    console.error("Get all lab requests error:", err);
+    res.status(500).json({ 
+      success: false,
+      message: "Server error",
+      error: err.message 
+    });
+  }
+};
+
 // Create a new lab request
 const createLabRequest = async (req, res) => {
   const { consultationId, testName, testType, instructions } = req.body;
@@ -29,14 +64,36 @@ const getLabRequestsByConsultation = async (req, res) => {
 // Update lab request (status, result, completed_by, etc.)
 const updateLabRequest = async (req, res) => {
   const { id } = req.params;
-  const { status, result, resultUnit, normalRange, completedAt, completedBy } = req.body;
+  const { status, result, result_unit, normal_range, completed_by } = req.body;
 
   try {
-    await LabRequest.update(id, { status, result, resultUnit, normalRange, completedAt, completedBy });
-    res.json({ message: "Lab request updated successfully" });
+    console.log("📝 Updating lab request:", id);
+    console.log("📊 Update data:", { status, result, result_unit, normal_range, completed_by });
+    
+    const updateData = {
+      status,
+      result,
+      result_unit,
+      normal_range,
+      completed_by
+    };
+    
+    const updatedRequest = await LabRequest.update(id, updateData);
+    console.log("✅ Lab request updated successfully");
+    
+    res.json({ 
+      success: true,
+      message: "Lab request updated successfully",
+      data: updatedRequest
+    });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
+    console.error("❌ Update lab request error:", err);
+    console.error("Error stack:", err.stack);
+    res.status(500).json({ 
+      success: false,
+      message: "Server error",
+      error: err.message 
+    });
   }
 };
 
@@ -45,13 +102,25 @@ const getLabRequest = async (req, res) => {
   const { id } = req.params;
 
   try {
-    const [rows] = await LabRequest.getById(id);
-    if (rows.length === 0) return res.status(404).json({ message: "Lab request not found" });
+    const labRequest = await LabRequest.getById(id);
+    if (!labRequest) {
+      return res.status(404).json({ 
+        success: false,
+        message: "Lab request not found" 
+      });
+    }
 
-    res.json(rows[0]);
+    res.json({
+      success: true,
+      data: labRequest
+    });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
+    console.error("Get lab request error:", err);
+    res.status(500).json({ 
+      success: false,
+      message: "Server error",
+      error: err.message
+    });
   }
 };
 
@@ -85,15 +154,13 @@ const getLabRequestStatus = async (req, res) => {
   const { id } = req.params;
 
   try {
-    const [rows] = await LabRequest.getById(id);
-    if (rows.length === 0) {
+    const labRequest = await LabRequest.getById(id);
+    if (!labRequest) {
       return res.status(404).json({ 
         success: false,
         message: "Lab request not found" 
       });
     }
-
-    const labRequest = rows[0];
 
     // If lab request is completed, update consultation status
     if (labRequest.status === 'completed') {
@@ -128,6 +195,7 @@ const getLabRequestStatus = async (req, res) => {
 };
 
 module.exports = {
+  getAllLabRequests,
   createLabRequest,
   getLabRequestsByConsultation,
   updateLabRequest,

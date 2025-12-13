@@ -3,11 +3,16 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import Layout from "../components/common/Layout";
 import { useAuth } from "../context/AuthContext";
+import { getLabRequests } from "../services/labService";
 
 const LabDashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [labRequests, setLabRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+
 
   // Update time every minute
   useEffect(() => {
@@ -17,10 +22,41 @@ const LabDashboard = () => {
     return () => clearInterval(timer);
   }, []);
 
+  // Fetch lab requests
+  useEffect(() => {
+    fetchLabRequests();
+  }, []);
+
+  const fetchLabRequests = async () => {
+    setLoading(true);
+    try {
+      const result = await getLabRequests();
+      if (result.success) {
+        setLabRequests(result.data || []);
+      }
+    } catch (error) {
+      console.error("Error fetching lab requests:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Calculate stats from actual data
+  const pendingCount = labRequests.filter(r => r.status === 'requested').length;
+  const processingCount = labRequests.filter(r => r.status === 'sample_collected' || r.status === 'processing').length;
+  const completedToday = labRequests.filter(r => {
+    if (r.status === 'completed' && r.completed_at) {
+      const completedDate = new Date(r.completed_at);
+      const today = new Date();
+      return completedDate.toDateString() === today.toDateString();
+    }
+    return false;
+  }).length;
+
   const stats = [
     {
       title: "Pending Tests",
-      value: "18",
+      value: pendingCount.toString(),
       icon: "⏳",
       gradient: "from-purple-500 to-pink-500",
       change: "Awaiting processing",
@@ -28,7 +64,7 @@ const LabDashboard = () => {
     },
     {
       title: "In Progress",
-      value: "12",
+      value: processingCount.toString(),
       icon: "🔬",
       gradient: "from-blue-500 to-cyan-500",
       change: "Being analyzed",
@@ -36,64 +72,38 @@ const LabDashboard = () => {
     },
     {
       title: "Completed Today",
-      value: "34",
+      value: completedToday.toString(),
       icon: "✅",
       gradient: "from-green-500 to-teal-500",
       change: "Results ready",
       changeType: "success",
     },
     {
-      title: "Critical Results",
-      value: "3",
-      icon: "⚠️",
+      title: "Total Requests",
+      value: labRequests.length.toString(),
+      icon: "📋",
       gradient: "from-red-500 to-orange-500",
-      change: "Needs attention",
-      changeType: "critical",
+      change: "All time",
+      changeType: "info",
     },
   ];
 
-  const pendingTests = [
-    {
-      requestId: "LAB-2024-001",
-      patientName: "Ahmed Hassan",
-      patientId: "P-1234",
-      testName: "Complete Blood Count (CBC)",
-      priority: "high",
-      requestedBy: "Dr. Sarah Johnson",
-      requestedAt: "09:15 AM",
-      status: "pending",
-    },
-    {
-      requestId: "LAB-2024-002",
-      patientName: "Fatima Ali",
-      patientId: "P-1235",
-      testName: "Lipid Profile",
-      priority: "normal",
-      requestedBy: "Dr. Michael Chen",
-      requestedAt: "09:30 AM",
-      status: "in-progress",
-    },
-    {
-      requestId: "LAB-2024-003",
-      patientName: "Mohammed Ibrahim",
-      patientId: "P-1236",
-      testName: "Liver Function Test (LFT)",
-      priority: "normal",
-      requestedBy: "Dr. Sarah Johnson",
-      requestedAt: "10:00 AM",
-      status: "pending",
-    },
-    {
-      requestId: "LAB-2024-004",
-      patientName: "Aisha Mohamed",
-      patientId: "P-1237",
-      testName: "Urinalysis",
-      priority: "urgent",
-      requestedBy: "Dr. Emily Rodriguez",
-      requestedAt: "10:15 AM",
-      status: "pending",
-    },
-  ];
+  // Get pending tests from actual data (limit to 4 most recent)
+  const pendingTests = labRequests
+    .filter(r => r.status === 'requested' || r.status === 'sample_collected' || r.status === 'processing')
+    .slice(0, 4)
+    .map(r => ({
+      requestId: r.id,
+      patientName: r.patient_name || "Unknown Patient",
+      patientId: r.patient_id || "N/A",
+      testName: r.test_name || "Lab Test",
+      priority: r.urgency || "normal",
+      requestedBy: r.completed_by_name || "Doctor",
+      requestedAt: r.created_at ? new Date(r.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : "N/A",
+      status: r.status === 'requested' ? 'pending' : r.status === 'processing' ? 'in-progress' : 'pending',
+    }));
+
+
 
   const recentActivities = [
     {
@@ -128,14 +138,24 @@ const LabDashboard = () => {
 
   const quickActions = [
     {
+      title: "View All Requests",
+      icon: (
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+      ),
+      gradient: "from-purple-500 to-pink-500",
+      action: () => navigate("/lab-requests"),
+    },
+    {
       title: "Process Sample",
       icon: (
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
         </svg>
       ),
-      gradient: "from-purple-500 to-pink-500",
-      action: () => navigate("/laboratory"),
+      gradient: "from-blue-500 to-cyan-500",
+      action: () => navigate("/lab-requests"),
     },
     {
       title: "Upload Results",
@@ -144,18 +164,8 @@ const LabDashboard = () => {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
         </svg>
       ),
-      gradient: "from-blue-500 to-cyan-500",
-      action: () => navigate("/laboratory"),
-    },
-    {
-      title: "View Requests",
-      icon: (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-      ),
       gradient: "from-green-500 to-teal-500",
-      action: () => navigate("/laboratory"),
+      action: () => navigate("/lab-requests"),
     },
     {
       title: "Quality Control",
@@ -165,7 +175,7 @@ const LabDashboard = () => {
         </svg>
       ),
       gradient: "from-orange-500 to-yellow-500",
-      action: () => navigate("/laboratory"),
+      action: () => navigate("/lab-requests"),
     },
   ];
 
@@ -316,14 +326,21 @@ const LabDashboard = () => {
                 </h2>
               </div>
               <div className="p-6">
-                <div className="space-y-4">
-                  {pendingTests.map((test, index) => (
+                {pendingTests.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="text-6xl mb-4">🎉</div>
+                    <p className="text-purple-300/70 text-lg">No pending lab tests</p>
+                    <p className="text-purple-300/50 text-sm mt-2">All tests are up to date!</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {pendingTests.map((test, index) => (
                     <motion.div
                       key={index}
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: 0.7 + index * 0.05 }}
-                      className="p-4 bg-white/5 rounded-xl hover:bg-white/10 transition-all duration-300 border border-transparent hover:border-purple-500/30 cursor-pointer group"
+                      className="p-4 bg-white/5 rounded-xl hover:bg-white/10 transition-all duration-300 border border-transparent hover:border-purple-500/30 group"
                     >
                       <div className="flex items-start gap-4">
                         <div className="flex-shrink-0">
@@ -361,17 +378,22 @@ const LabDashboard = () => {
                             </span>
                           </div>
                         </div>
-                        <button className="px-4 py-2 bg-gradient-to-r from-purple-500/20 to-pink-500/20 hover:from-purple-500/30 hover:to-pink-500/30 border border-purple-500/30 hover:border-purple-400/50 text-purple-300 hover:text-purple-200 text-sm font-medium rounded-lg transition-all duration-300">
+                        <button 
+                          type="button"
+                          onClick={() => navigate("/lab-requests")}
+                          className="px-4 py-2 bg-gradient-to-r from-purple-500/20 to-pink-500/20 hover:from-purple-500/30 hover:to-pink-500/30 border border-purple-500/30 hover:border-purple-400/50 text-purple-300 hover:text-purple-200 text-sm font-medium rounded-lg transition-all duration-300"
+                        >
                           Process
                         </button>
                       </div>
                     </motion.div>
                   ))}
-                </div>
+                  </div>
+                )}
               </div>
               <div className="p-4 bg-white/5 border-t border-purple-500/20">
                 <button
-                  onClick={() => navigate("/laboratory")}
+                  onClick={() => navigate("/lab-requests")}
                   className="w-full text-center text-sm text-purple-300 hover:text-purple-200 transition-colors font-medium"
                 >
                   View all lab requests →

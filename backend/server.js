@@ -89,6 +89,9 @@ const consultationRoutes = require("./routes/consultationRoutes");
 const prescriptionRoutes = require("./routes/prescription.routes");
 const labRequestRoutes = require("./routes/labRequestRoutes");
 const labTestRoutes = require("./routes/labTestRoutes");
+const billingRoutes = require("./routes/billingRoutes");
+const pharmacyRoutes = require("./routes/pharmacyRoutes");
+const integrationRoutes = require("./routes/integrationRoutes");
 
 console.log("Registering routes...");
 app.use("/api/auth", authRoutes);
@@ -99,6 +102,9 @@ app.use("/api/consultations", consultationRoutes);
 app.use("/api/prescriptions", prescriptionRoutes);
 app.use("/api/lab-requests", labRequestRoutes);
 app.use("/api/lab", labTestRoutes);
+app.use("/api/billing", billingRoutes);
+app.use("/api/pharmacy", pharmacyRoutes);
+app.use("/api/integration", integrationRoutes);
 
 // Temporary test endpoint for doctors (no auth required)
 app.get("/api/doctors-test", async (req, res) => {

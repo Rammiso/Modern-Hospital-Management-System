@@ -21,7 +21,7 @@ export const USER_ROLES = {
   NURSE: "nurse",
   RECEPTIONIST: "receptionist",
   PHARMACIST: "pharmacist",
-  LAB_TECHNICIAN: "lab_technician",
+  LAB_TECHNICIAN: "laboratorist", // Changed from "lab_technician" to match database
   CASHIER: "cashier",
 };
 

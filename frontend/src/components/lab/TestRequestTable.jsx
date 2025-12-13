@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import StatusBadge from "./StatusBadge";
 
-const TestRequestTable = ({ labRequests, loading, onViewTests }) => {
+const TestRequestTable = ({ requests, loading, onViewRequest, onSubmitResults, onStatusUpdate }) => {
+  const labRequests = requests || [];
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -73,16 +74,16 @@ const TestRequestTable = ({ labRequests, loading, onViewTests }) => {
           <thead className="sticky top-0 z-10">
             <tr className="border-b border-purple-500/30 bg-purple-500/10 backdrop-blur-md">
               <th className="px-6 py-4 text-left text-xs font-semibold text-purple-300 uppercase tracking-wider">
-                Lab Request ID
+                Request ID
               </th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-purple-300 uppercase tracking-wider">
                 Patient Name
               </th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-purple-300 uppercase tracking-wider">
-                Doctor Name
+                Test Name
               </th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-purple-300 uppercase tracking-wider">
-                Test Count
+                Test Type
               </th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-purple-300 uppercase tracking-wider">
                 Status
@@ -91,7 +92,7 @@ const TestRequestTable = ({ labRequests, loading, onViewTests }) => {
                 Requested Time
               </th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-purple-300 uppercase tracking-wider">
-                Action
+                Actions
               </th>
             </tr>
           </thead>
@@ -106,37 +107,30 @@ const TestRequestTable = ({ labRequests, loading, onViewTests }) => {
                   <div className="flex items-center gap-2">
                     <div className="w-2 h-2 rounded-full bg-purple-400 animate-pulse"></div>
                     <span className="text-sm font-mono text-purple-100">
-                      LAB-{request.id}
+                      {request.id?.substring(0, 8)}...
                     </span>
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div>
                     <div className="text-sm font-semibold text-purple-100">
-                      {request.patientName}
+                      {request.patient_name || "Unknown"}
                     </div>
                     <div className="text-xs text-purple-300/70">
-                      {request.patientId}
+                      {request.patient_id || "N/A"}
                     </div>
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-6 py-4">
                   <div className="text-sm text-purple-200">
-                    {request.doctorName}
+                    {request.test_name}
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center gap-2">
-                    <div className="px-3 py-1 bg-purple-500/20 border border-purple-400/30 rounded-lg">
-                      <span className="text-sm font-semibold text-purple-200">
-                        {request.tests.length} {request.tests.length === 1 ? 'test' : 'tests'}
-                      </span>
-                    </div>
-                    {request.tests.some(t => t.urgency === "Urgent") && (
-                      <div className="px-2 py-1 bg-red-500/20 border border-red-400/50 rounded text-xs font-semibold text-red-300">
-                        URGENT
-                      </div>
-                    )}
+                  <div className="px-3 py-1 bg-purple-500/20 border border-purple-400/30 rounded-lg inline-block">
+                    <span className="text-sm font-semibold text-purple-200 capitalize">
+                      {request.test_type}
+                    </span>
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
@@ -144,16 +138,26 @@ const TestRequestTable = ({ labRequests, loading, onViewTests }) => {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm text-purple-200">
-                    {formatDateTime(request.requestedAt)}
+                    {formatDateTime(request.created_at)}
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <button
-                    onClick={() => onViewTests(request)}
-                    className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-semibold text-sm hover:from-purple-600 hover:to-pink-600 transition-all duration-300 shadow-lg hover:shadow-purple-500/50 hover:scale-105 group-hover:ring-2 group-hover:ring-purple-400/50"
-                  >
-                    View Tests
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => onViewRequest(request)}
+                      className="px-3 py-1.5 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 text-blue-300 rounded-lg font-semibold text-sm transition-all duration-300"
+                    >
+                      View
+                    </button>
+                    {request.status !== "completed" && (
+                      <button
+                        onClick={() => onSubmitResults(request)}
+                        className="px-3 py-1.5 bg-green-500/20 hover:bg-green-500/30 border border-green-500/30 text-green-300 rounded-lg font-semibold text-sm transition-all duration-300"
+                      >
+                        Submit
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}

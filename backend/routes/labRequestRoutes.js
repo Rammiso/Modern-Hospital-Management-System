@@ -1,7 +1,10 @@
 const express = require("express");
 const router = express.Router();
 const controller = require("../controllers/labRequestController");
-const verifyToken = require("../middleware/auth");
+const { verifyToken } = require("../middleware/auth");
+
+// Get all lab requests (with filters)
+router.get("/", verifyToken, controller.getAllLabRequests);
 
 // Create a new lab request
 router.post("/", verifyToken, controller.createLabRequest);
