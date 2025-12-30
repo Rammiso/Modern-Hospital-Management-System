@@ -91,6 +91,35 @@ exports.dispensePrescription = async (req, res) => {
     );
     
     await connection.commit();
+
+    // 8. LOW STOCK ALERT (NEW)
+    const newQuantity = drug.quantity - quantity;
+    const reorderLevel = drug.reorder_level || 10;
+    
+    if (newQuantity <= reorderLevel) {
+      // Create notification for pharmacists and admins
+      try {
+        const [staff] = await connection.execute(
+          `SELECT u.id FROM users u
+           JOIN roles r ON u.role_id = r.role_id
+           WHERE LOWER(r.role_name) IN ('pharmacist', 'admin') AND u.is_active = 1`
+        );
+
+        for (const person of staff) {
+          await connection.execute(
+            `INSERT INTO notifications (notification_id, staff_id, message, is_read, created_at)
+             VALUES (UUID(), ?, ?, FALSE, NOW())`,
+            [
+              person.id,
+              `LOW STOCK ALERT: ${drug.drug_name} is below reorder level. Current quantity: ${newQuantity}`
+            ]
+          );
+        }
+      } catch (notifyError) {
+        console.error('Failed to create low stock notification:', notifyError);
+        // Don't fail the whole request if notification fails
+      }
+    }
     
     res.status(200).json({
       success: true,
@@ -205,8 +234,45 @@ exports.getDispensedPrescriptions = async (req, res) => {
   }
 };
 
+/**
+ * Get patient's dispensation history
+ * GET /api/pharmacy/patient/:patientId
+ */
+exports.getPatientDispensationHistory = async (req, res) => {
+  try {
+    const { query } = require('../config/db');
+    const { patientId } = req.params;
+    
+    const dispensations = await query(
+      `SELECT d.dispense_id, d.quantity, d.dispensed_at, d.remarks,
+              pi.drug_name, pi.unit,
+              u.full_name as dispensed_by_name
+       FROM dispensations d
+       INNER JOIN pharmacy_inventory pi ON d.drug_id = pi.id
+       LEFT JOIN users u ON d.dispensed_by = u.id
+       WHERE d.patient_id = ?
+       ORDER BY d.dispensed_at DESC`,
+      [patientId]
+    );
+    
+    res.status(200).json({
+      success: true,
+      count: dispensations.length,
+      data: dispensations
+    });
+    
+  } catch (error) {
+    console.error('Get Patient Dispensation History Error:', error);
+    res.status(500).json({ 
+      message: 'Failed to fetch patient dispensation history',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   dispensePrescription: exports.dispensePrescription,
   getPendingPrescriptions: exports.getPendingPrescriptions,
-  getDispensedPrescriptions: exports.getDispensedPrescriptions
+  getDispensedPrescriptions: exports.getDispensedPrescriptions,
+  getPatientDispensationHistory: exports.getPatientDispensationHistory
 };

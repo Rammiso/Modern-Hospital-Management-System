@@ -3,7 +3,8 @@ const router = express.Router();
 const { 
   dispensePrescription, 
   getPendingPrescriptions,
-  getDispensedPrescriptions 
+  getDispensedPrescriptions,
+  getPatientDispensationHistory
 } = require('../controllers/pharmacyDispense');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
@@ -21,6 +22,14 @@ router.get(
   protect,
   authorize('pharmacist', 'admin'),
   getDispensedPrescriptions
+);
+
+// Get patient's dispensation history
+router.get(
+  '/patient/:patientId',
+  protect,
+  authorize('pharmacist', 'admin', 'doctor'),
+  getPatientDispensationHistory
 );
 
 // Dispense prescription

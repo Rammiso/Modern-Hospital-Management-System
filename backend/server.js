@@ -66,15 +66,34 @@ const express = require("express");
 const app = express();
 const cors = require("cors");
 const dotenv = require("dotenv");
+const path = require("path");
 
 // Load environment variables
-dotenv.config();
+dotenv.config({ path: path.join(__dirname, ".env") });
 
 // Middleware
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+  "http://localhost:5173",
+  "http://127.0.0.1:5173"
+].filter(Boolean);
+
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV === "development") {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"]
   })
 );
 app.use(express.json());
@@ -91,6 +110,7 @@ const labRequestRoutes = require("./routes/labRequestRoutes");
 const labTestRoutes = require("./routes/labTestRoutes");
 const billingRoutes = require("./routes/billingRoutes");
 const pharmacyRoutes = require("./routes/pharmacyRoutes");
+const notificationRoutes = require("./routes/notificationRoutes");
 const integrationRoutes = require("./routes/integrationRoutes");
 
 console.log("Registering routes...");
@@ -104,7 +124,10 @@ app.use("/api/lab-requests", labRequestRoutes);
 app.use("/api/lab", labTestRoutes);
 app.use("/api/billing", billingRoutes);
 app.use("/api/pharmacy", pharmacyRoutes);
+app.use("/api/notifications", notificationRoutes);
 app.use("/api/integration", integrationRoutes);
+app.use("/api/users", require("./routes/userRoutes"));
+app.use("/api/schedules", require("./routes/scheduleRoutes"));
 
 // Temporary test endpoint for doctors (no auth required)
 app.get("/api/doctors-test", async (req, res) => {

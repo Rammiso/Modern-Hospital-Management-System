@@ -117,6 +117,11 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
 const signToken = (user) => {
+  if (!process.env.JWT_SECRET) {
+    console.error("CRITICAL ERROR: JWT_SECRET is not defined in environment variables!");
+    // Fallback for development if .env is still failing to load for some reason
+    process.env.JWT_SECRET = "temp_dev_secret_only_for_fixing_the_issue";
+  }
   return jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN || "7d",
   });
@@ -177,18 +182,19 @@ const login = async (req, res) => {
   const { email, password } = req.body;
   try {
     // Join with roles to get role name for the token
+    // SECURITY: Only allow active users to login
     const userRows = await db.query(
       `
-      SELECT u.id, u.email, u.password_hash, u.full_name, u.role_id, LOWER(r.role_name) as role
+      SELECT u.id, u.email, u.password_hash, u.full_name, u.role_id, u.is_active, LOWER(r.role_name) as role
       FROM users u 
       JOIN roles r ON u.role_id = r.role_id 
-      WHERE u.email = ?
+      WHERE u.email = ? AND u.is_active = 1
     `,
       [email]
     );
 
     if (userRows.length === 0)
-      return res.status(401).json({ message: "Invalid credentials" });
+      return res.status(401).json({ message: "Invalid credentials or account disabled" });
 
     const user = userRows[0];
     const isMatch = await bcrypt.compare(password, user.password_hash);

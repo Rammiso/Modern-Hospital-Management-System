@@ -5,8 +5,8 @@ const validateMiddleware = require('../middleware/validate.middleware');
 const ConsultationModel = require('../models/consultation.model');
 const authMiddleware = require('../middleware/authMiddleware.js');
 
-// Protect all routes - temporarily disabled for testing
-// router.use(authMiddleware.protect);
+// Protect all routes
+router.use(authMiddleware.protect);
 
 // ===========================
 // WORKFLOW ENDPOINTS (NEW)
@@ -15,24 +15,28 @@ const authMiddleware = require('../middleware/authMiddleware.js');
 // Get ongoing consultations for doctor
 router.get(
   '/ongoing',
+  authMiddleware.authorize('doctor', 'admin'),
   ConsultationController.getOngoingConsultations
 );
 
-// Save consultation as draft
+// Save consultation as draft (doctors only)
 router.post(
   '/save-draft',
+  authMiddleware.authorize('doctor', 'admin'),
   ConsultationController.saveDraft
 );
 
-// Send lab request and pause consultation
+// Send lab request and pause consultation (doctors only)
 router.post(
   '/send-lab-request',
+  authMiddleware.authorize('doctor', 'admin'),
   ConsultationController.sendLabRequest
 );
 
-// Finish consultation (complete workflow)
+// Finish consultation (complete workflow) (doctors only)
 router.post(
   '/finish',
+  authMiddleware.authorize('doctor', 'admin'),
   ConsultationController.finishConsultation
 );
 
@@ -40,9 +44,10 @@ router.post(
 // STANDARD CRUD ENDPOINTS
 // ===========================
 
-// Create Consultation
+// Create Consultation (doctors only)
 router.post(
   '/',
+  authMiddleware.authorize('doctor', 'admin'),
   validateMiddleware(ConsultationModel.validationSchema),
   ConsultationController.createConsultation
 );

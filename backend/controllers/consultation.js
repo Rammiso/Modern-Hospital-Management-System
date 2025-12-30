@@ -74,6 +74,26 @@ class ConsultationController {
   // UPDATE  → PUT /consultations/:id
   async updateConsultation(req, res) {
     try {
+      const { query } = require('../config/db');
+      const consultationId = req.params.id;
+
+      // Check current status
+      const [currentConsultation] = await query(
+        'SELECT status FROM consultations WHERE id = ?',
+        [consultationId]
+      );
+
+      if (!currentConsultation) {
+        return res.status(404).json({ success: false, message: 'Consultation not found' });
+      }
+
+      if (currentConsultation.status === 'COMPLETED') {
+        return res.status(400).json({
+          success: false,
+          message: 'Cannot update a completed consultation',
+        });
+      }
+
       const validatedData = await ConsultationModel.validationSchema
         .fork(Object.keys(req.body), (schema) => schema.optional())
         .validateAsync(req.body, { abortEarly: false });
@@ -83,7 +103,7 @@ class ConsultationController {
         validatedData.bmi = ConsultationModel.calculateBMI(validatedData.weight, validatedData.height);
       }
 
-      const updated = await ConsultationModel.update(req.params.id, validatedData);
+      const updated = await ConsultationModel.update(consultationId, validatedData);
 
       if (!updated) {
         return res.status(404).json({
@@ -324,14 +344,21 @@ class ConsultationController {
       
       if (data.id) {
         // Check by consultation ID
-        const [existing] = await query('SELECT id FROM consultations WHERE id = ?', [data.id]);
+        const [existing] = await query('SELECT id, status FROM consultations WHERE id = ?', [data.id]);
         existingConsultation = existing;
       } else if (data.appointment_id) {
         // Check by appointment ID
-        const [existing] = await query('SELECT id FROM consultations WHERE appointment_id = ?', [data.appointment_id]);
+        const [existing] = await query('SELECT id, status FROM consultations WHERE appointment_id = ?', [data.appointment_id]);
         existingConsultation = existing;
       }
-      
+
+      if (existingConsultation && existingConsultation.status === 'COMPLETED') {
+        return res.status(400).json({
+          success: false,
+          message: 'Cannot save draft for a completed consultation',
+        });
+      }
+
       if (existingConsultation) {
         // Update existing
         const updateSql = `
@@ -490,6 +517,13 @@ class ConsultationController {
         });
       }
 
+      if (consultation.status === 'COMPLETED') {
+        return res.status(400).json({
+          success: false,
+          message: 'Cannot send lab requests for a completed consultation',
+        });
+      }
+
       // Create lab requests
       let firstLabRequestId = null;
       for (const lab of lab_requests) {
@@ -522,16 +556,24 @@ class ConsultationController {
       );
 
       // Create notification for lab technician
-      await query(
-        `INSERT INTO lab_notifications (id, consultation_id, lab_request_id, doctor_id, message, is_read, created_at)
-         VALUES (UUID(), ?, ?, ?, ?, FALSE, NOW())`,
-        [
-          consultation_id,
-          firstLabRequestId,
-          consultation.doctor_id,
-          `New lab request from Dr. ${consultation.doctor_id} for patient ${consultation.patient_id}`,
-        ]
+      // Get a lab technician to notify
+      const [labTech] = await query(
+        `SELECT id FROM users 
+         WHERE role_id = (SELECT role_id FROM roles WHERE role_name = 'Laboratorist') 
+         AND is_active = 1 
+         LIMIT 1`
       );
+
+      if (labTech) {
+        await query(
+          `INSERT INTO notifications (notification_id, staff_id, message, is_read, created_at)
+           VALUES (UUID(), ?, ?, FALSE, NOW())`,
+          [
+            labTech.id,
+            `New lab request for patient ${consultation.patient_id}. Test: ${lab_requests[0]?.test_name || 'Multiple tests'}`,
+          ]
+        );
+      }
 
       res.status(200).json({
         success: true,
@@ -599,12 +641,83 @@ class ConsultationController {
         const billNumber = `BILL-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}${String(new Date().getDate()).padStart(2, '0')}-${Math.floor(Math.random() * 10000)}`;
         
         const consultationFee = 500; // Default consultation fee
-        const totalAmount = consultationFee;
+
+        // Insert bill first
+        const billResult = await query(
+          `INSERT INTO bills (id, bill_number, patient_id, consultation_id, consultation_fee, total_amount, balance, payment_status, created_at)
+           VALUES (UUID(), ?, ?, ?, ?, 0, 0, 'pending', NOW())`,
+          [billNumber, consultation.patient_id, consultationId, consultationFee]
+        );
+
+        // Get the bill ID
+        const [bill] = await query(
+          'SELECT id FROM bills WHERE bill_number = ?',
+          [billNumber]
+        );
+        const billId = bill.id;
+
+        // 1. Add consultation fee as bill item
+        await query(
+          `INSERT INTO bill_items (id, bill_id, item_type, item_description, quantity, unit_price, total_price)
+           VALUES (UUID(), ?, 'consultation', 'Medical Consultation', 1, ?, ?)`,
+          [billId, consultationFee, consultationFee]
+        );
+
+        // 2. Add dispensed prescriptions as bill items
+        const prescriptions = await query(
+          `SELECT p.id, p.drug_name, pi.unit_price, d.quantity
+           FROM prescriptions p
+           JOIN dispensations d ON CONCAT('Prescription ', p.id) = d.remarks
+           JOIN pharmacy_inventory pi ON d.drug_id = pi.id
+           WHERE p.consultation_id = ? AND p.status = 'dispensed'`,
+          [consultationId]
+        );
+
+        for (const rx of prescriptions) {
+          await query(
+            `INSERT INTO bill_items (id, bill_id, item_type, item_description, quantity, unit_price, total_price, prescription_id)
+             VALUES (UUID(), ?, 'pharmacy', ?, ?, ?, ?, ?)`,
+            [billId, rx.drug_name, rx.quantity, rx.unit_price, rx.quantity * rx.unit_price, rx.id]
+          );
+        }
+
+        // 3. Add completed lab tests as bill items
+        const labTests = await query(
+          `SELECT lr.id, lr.test_name, COALESCE(lt.price, 0) as price
+           FROM lab_requests lr
+           LEFT JOIN ethiopian_moh_lab_tests lt ON lr.test_name = lt.test_name
+           WHERE lr.consultation_id = ? AND lr.status = 'completed'`,
+          [consultationId]
+        );
+
+        for (const lab of labTests) {
+          const labPrice = lab.price || 0;
+          await query(
+            `INSERT INTO bill_items (id, bill_id, item_type, item_description, quantity, unit_price, total_price, lab_request_id)
+             VALUES (UUID(), ?, 'lab', ?, 1, ?, ?, ?)`,
+            [billId, lab.test_name, labPrice, labPrice, lab.id]
+          );
+        }
+
+        // 4. Calculate and update bill totals
+        const [totals] = await query(
+          `SELECT 
+            COALESCE(SUM(CASE WHEN item_type = 'pharmacy' THEN total_price ELSE 0 END), 0) as pharmacy_total,
+            COALESCE(SUM(CASE WHEN item_type = 'lab' THEN total_price ELSE 0 END), 0) as lab_total,
+            COALESCE(SUM(total_price), 0) as grand_total
+           FROM bill_items
+           WHERE bill_id = ?`,
+          [billId]
+        );
 
         await query(
-          `INSERT INTO bills (id, bill_number, patient_id, consultation_id, consultation_fee, total_amount, balance, payment_status, created_at)
-           VALUES (UUID(), ?, ?, ?, ?, ?, ?, 'pending', NOW())`,
-          [billNumber, consultation.patient_id, consultationId, consultationFee, totalAmount, totalAmount]
+          `UPDATE bills SET 
+            pharmacy_total = ?,
+            lab_total = ?,
+            total_amount = ?,
+            balance = ?
+           WHERE id = ?`,
+          [totals.pharmacy_total, totals.lab_total, totals.grand_total, totals.grand_total, billId]
         );
       }
 
