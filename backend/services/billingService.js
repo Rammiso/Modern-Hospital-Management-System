@@ -2,130 +2,113 @@ const db = require('../config/db');
 
 class BillingService {
   /**
-   * Create a new billing record
-   * @param {Object} billingData - Billing information
-   * @returns {Promise<Object>} Created billing record
-   */
-  async createBilling(billingData) {
-    const {
-      patient_id,
-      consultation_id,
-      total_amount,
-      payment_status = 'pending',
-      payment_method = null,
-      created_by
-    } = billingData;
-
-    const query = `
-      INSERT INTO billing (
-        patient_id, consultation_id, total_amount, 
-        payment_status, payment_method, created_by
-      )
-      VALUES (?, ?, ?, ?, ?, ?)
-    `;
-
-    const [result] = await db.execute(query, [
-      patient_id,
-      consultation_id,
-      total_amount,
-      payment_status,
-      payment_method,
-      created_by
-    ]);
-
-    return {
-      billing_id: result.insertId,
-      patient_id,
-      consultation_id,
-      total_amount,
-      payment_status,
-      payment_method,
-      created_by
-    };
-  }
-
-  /**
-   * Get billing record by ID
-   * @param {number} billingId - Billing ID
-   * @returns {Promise<Object|null>} Billing record
-   */
-  async getBillingById(billingId) {
-    const query = `
-      SELECT b.*, 
-             p.first_name, p.last_name, p.phone,
-             u.username as created_by_name
-      FROM billing b
-      LEFT JOIN patients p ON b.patient_id = p.patient_id
-      LEFT JOIN users u ON b.created_by = u.user_id
-      WHERE b.billing_id = ?
-    `;
-
-    const [rows] = await db.execute(query, [billingId]);
-    return rows.length > 0 ? rows[0] : null;
-  }
-
-  /**
-   * Get billing records by patient ID
-   * @param {number} patientId - Patient ID
+   * Get all billing records with filters
+   * @param {Object} filters - Filter options
    * @returns {Promise<Array>} Array of billing records
    */
-  async getBillingByPatient(patientId) {
-    const query = `
+  async getAllBilling(filters = {}) {
+    let sql = `
       SELECT b.*, 
-             u.username as created_by_name
-      FROM billing b
-      LEFT JOIN users u ON b.created_by = u.user_id
-      WHERE b.patient_id = ?
-      ORDER BY b.created_at DESC
+             p.full_name AS patient_name, p.patient_id AS patient_display_id,
+             u.full_name AS created_by_name,
+             d.full_name AS doctor_name
+      FROM bills b
+      LEFT JOIN patients p ON b.patient_id = p.id
+      LEFT JOIN users u ON b.created_by = u.id
+      LEFT JOIN consultations c ON b.consultation_id = c.id
+      LEFT JOIN users d ON c.doctor_id = d.id
+      WHERE 1=1
     `;
 
-    const [rows] = await db.execute(query, [patientId]);
-    return rows;
+    const params = [];
+
+    if (filters.payment_status && filters.payment_status !== 'ALL') {
+      sql += ' AND b.payment_status = ?';
+      params.push(filters.payment_status.toLowerCase());
+    }
+
+    if (filters.start_date) {
+      sql += ' AND DATE(b.created_at) >= ?';
+      params.push(filters.start_date);
+    }
+
+    if (filters.end_date) {
+      sql += ' AND DATE(b.created_at) <= ?';
+      params.push(filters.end_date);
+    }
+
+    sql += ' ORDER BY b.created_at DESC';
+
+    return await db.query(sql, params);
   }
 
   /**
-   * Get billing record by consultation ID
-   * @param {number} consultationId - Consultation ID
-   * @returns {Promise<Object|null>} Billing record
+   * Get billing record by ID including items
+   * @param {string} billingId - Billing ID (UUID)
+   * @returns {Promise<Object|null>} Billing record with items
    */
-  async getBillingByConsultation(consultationId) {
-    const query = `
+  async getBillingById(billingId) {
+    const billSql = `
       SELECT b.*, 
-             p.first_name, p.last_name, p.phone,
-             u.username as created_by_name
-      FROM billing b
-      LEFT JOIN patients p ON b.patient_id = p.patient_id
-      LEFT JOIN users u ON b.created_by = u.user_id
-      WHERE b.consultation_id = ?
+             p.full_name AS patient_name, p.patient_id AS patient_display_id,
+             p.date_of_birth, p.gender,
+             u.full_name AS created_by_name,
+             c.doctor_id, d.full_name AS doctor_name,
+             dept_role.role_name as department
+      FROM bills b
+      LEFT JOIN patients p ON b.patient_id = p.id
+      LEFT JOIN users u ON b.created_by = u.id
+      LEFT JOIN consultations c ON b.consultation_id = c.id
+      LEFT JOIN users d ON c.doctor_id = d.id
+      LEFT JOIN roles dept_role ON d.role_id = dept_role.role_id
+      WHERE b.id = ?
     `;
 
-    const [rows] = await db.execute(query, [consultationId]);
-    return rows.length > 0 ? rows[0] : null;
+    const bills = await db.query(billSql, [billingId]);
+    if (bills.length === 0) return null;
+
+    const bill = bills[0];
+
+    // Fetch items
+    const itemsSql = `
+      SELECT * FROM bill_items WHERE bill_id = ? ORDER BY created_at ASC
+    `;
+    bill.items = await db.query(itemsSql, [billingId]);
+
+    return bill;
   }
 
   /**
    * Update billing payment status
-   * @param {number} billingId - Billing ID
+   * @param {string} billingId - Billing ID
    * @param {Object} paymentData - Payment information
-   * @returns {Promise<Object>} Updated billing record
    */
   async updatePaymentStatus(billingId, paymentData) {
-    const { payment_status, payment_method, transaction_id } = paymentData;
+    const { payment_status, payment_method, amount_paid } = paymentData;
 
-    const query = `
-      UPDATE billing 
+    // First get current bill
+    const [bill] = await db.query('SELECT total_amount, paid_amount FROM bills WHERE id = ?', [billingId]);
+    if (!bill) throw new Error('Bill not found');
+
+    const newPaidAmount = parseFloat(bill.paid_amount) + parseFloat(amount_paid || 0);
+    const newBalance = parseFloat(bill.total_amount) - newPaidAmount;
+    const finalStatus = newBalance <= 0 ? 'paid' : (newPaidAmount > 0 ? 'partial' : 'pending');
+
+    const sql = `
+      UPDATE bills 
       SET payment_status = ?,
           payment_method = ?,
-          transaction_id = ?,
-          paid_at = CASE WHEN ? = 'paid' THEN NOW() ELSE paid_at END
-      WHERE billing_id = ?
+          paid_amount = ?,
+          balance = ?,
+          updated_at = NOW()
+      WHERE id = ?
     `;
 
-    await db.execute(query, [
-      payment_status,
+    await db.query(sql, [
+      finalStatus,
       payment_method,
-      transaction_id,
-      payment_status,
+      newPaidAmount,
+      newBalance,
       billingId
     ]);
 
@@ -133,76 +116,42 @@ class BillingService {
   }
 
   /**
-   * Get all billing records with filters
-   * @param {Object} filters - Filter options
-   * @returns {Promise<Array>} Array of billing records
+   * Get billing record by consultation ID
    */
-  async getAllBilling(filters = {}) {
-    let query = `
-      SELECT b.*, 
-             p.first_name, p.last_name, p.phone,
-             u.username as created_by_name
-      FROM billing b
-      LEFT JOIN patients p ON b.patient_id = p.patient_id
-      LEFT JOIN users u ON b.created_by = u.user_id
-      WHERE 1=1
-    `;
-
-    const params = [];
-
-    if (filters.payment_status) {
-      query += ' AND b.payment_status = ?';
-      params.push(filters.payment_status);
-    }
-
-    if (filters.start_date) {
-      query += ' AND DATE(b.created_at) >= ?';
-      params.push(filters.start_date);
-    }
-
-    if (filters.end_date) {
-      query += ' AND DATE(b.created_at) <= ?';
-      params.push(filters.end_date);
-    }
-
-    query += ' ORDER BY b.created_at DESC';
-
-    const [rows] = await db.execute(query, params);
-    return rows;
+  async getBillingByConsultation(consultationId) {
+    const [bill] = await db.query('SELECT id FROM bills WHERE consultation_id = ?', [consultationId]);
+    if (!bill) return null;
+    return this.getBillingById(bill.id);
   }
 
   /**
-   * Get billing statistics
-   * @param {Object} filters - Filter options
-   * @returns {Promise<Object>} Billing statistics
+   * Get billing stats
    */
   async getBillingStats(filters = {}) {
-    let query = `
+    let sql = `
       SELECT 
         COUNT(*) as total_bills,
         SUM(CASE WHEN payment_status = 'paid' THEN 1 ELSE 0 END) as paid_bills,
         SUM(CASE WHEN payment_status = 'pending' THEN 1 ELSE 0 END) as pending_bills,
         SUM(total_amount) as total_revenue,
-        SUM(CASE WHEN payment_status = 'paid' THEN total_amount ELSE 0 END) as collected_revenue,
-        SUM(CASE WHEN payment_status = 'pending' THEN total_amount ELSE 0 END) as pending_revenue
-      FROM billing
+        SUM(paid_amount) as collected_revenue,
+        SUM(balance) as pending_revenue
+      FROM bills
       WHERE 1=1
     `;
 
     const params = [];
-
     if (filters.start_date) {
-      query += ' AND DATE(created_at) >= ?';
+      sql += ' AND DATE(created_at) >= ?';
       params.push(filters.start_date);
     }
-
     if (filters.end_date) {
-      query += ' AND DATE(created_at) <= ?';
+      sql += ' AND DATE(created_at) <= ?';
       params.push(filters.end_date);
     }
 
-    const [rows] = await db.execute(query, params);
-    return rows[0];
+    const results = await db.query(sql, params);
+    return results[0];
   }
 }
 

@@ -32,6 +32,9 @@ router.get("/", verifyToken, controller.listAppointments);
 // GET or CREATE Consultation for Appointment (NEW - for workflow)
 router.get("/:id/consultation-or-create", verifyToken, controller.getOrCreateConsultation);
 
+// UPDATE Appointment Status (NEW - for workflow)
+router.patch("/:id/status", verifyToken, controller.updateStatus);
+
 // GET Single Appointment (must be last to avoid conflicts)
 router.get("/:id", verifyToken, controller.getAppointment);
 

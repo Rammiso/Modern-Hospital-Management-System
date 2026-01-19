@@ -199,13 +199,57 @@ const getAvailableSlots = async (req, res) => {
   }
 };
 
-module.exports = {
-  createAppointment,
-  getAppointment,
-  listAppointments,
-  getAvailableSlots,
-};
+/**
+ * Update appointment status
+ * PATCH /api/appointments/:id/status
+ */
+const updateStatus = async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  
+  try {
+    // Validate status
+    const validStatuses = ['scheduled', 'checked_in', 'in_consultation', 'completed', 'cancelled', 'no_show'];
+    if (!status || !validStatuses.includes(status)) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Invalid status. Must be one of: ' + validStatuses.join(', ')
+      });
+    }
 
+    // Check if appointment exists
+    const appointment = await db.query('SELECT * FROM appointments WHERE id = ?', [id]);
+    if (appointment.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Appointment not found'
+      });
+    }
+
+    // Update status
+    await db.query(
+      'UPDATE appointments SET status = ?, updated_at = NOW() WHERE id = ?',
+      [status, id]
+    );
+
+    res.status(200).json({
+      success: true,
+      message: 'Appointment status updated successfully',
+      data: {
+        id,
+        status,
+        updated_at: new Date()
+      }
+    });
+  } catch (error) {
+    console.error('Update Appointment Status Error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating appointment status',
+      error: error.message
+    });
+  }
+};
 
 /**
  * Get or create consultation for appointment
@@ -344,4 +388,5 @@ module.exports = {
   listAppointments,
   getAvailableSlots,
   getOrCreateConsultation,
+  updateStatus,
 };
